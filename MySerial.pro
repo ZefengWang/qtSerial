@@ -19,7 +19,7 @@ TARGET = SerialDebug
 TEMPLATE = app
 
 # Version definition
-DEFINES += APP_VERSION=\\\"2.0\\\"
+DEFINES += APP_VERSION=\\\"2.0.1\\\"
 
 SOURCES += \
     main.cpp \
