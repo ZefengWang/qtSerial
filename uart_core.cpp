@@ -31,7 +31,27 @@ bool Uartcore::open(QString serialName, int baudRate, int data_bit, int parity_b
     serial_port_->setReadBufferSize(0);//設置緩衝區大小為無窮大
     connect(serial_port_, SIGNAL(readyRead()), this, SLOT(read_lower_computer_dataer_computer_dataer_computer_data()));
     connect(serial_port_, SIGNAL(readyRead()), this, SIGNAL(read_signal()));
+    lastError_.clear();
     return true;
+  }
+
+  // Capture detailed error information
+  QSerialPort::SerialPortError err = serial_port_->error();
+  switch (err) {
+  case QSerialPort::PermissionError:
+    lastError_ = QStringLiteral("[Permission Denied] %1\n\n"
+                                "To access serial ports as a regular user on Linux:\n"
+                                "  1. Add your user to the 'dialout' group:\n"
+                                "       sudo usermod -aG dialout $USER\n"
+                                "  2. Log out and back in (or reboot).\n\n"
+                                "Or run the application with sudo.")
+                    .arg(serial_port_->errorString());
+    break;
+  default:
+    lastError_ = QStringLiteral("[%1] %2")
+                    .arg(serial_port_->errorString())
+                    .arg(serialName);
+    break;
   }
 
   return false;

@@ -1,0 +1,20 @@
+Package: serial-debug
+Version: 2.0.0
+Section: electronics
+Priority: optional
+Architecture: amd64
+Depends: libqt5widgets5 (>= 5.12),
+         libqt5gui5 (>= 5.12) | libqt5gui5-gles (>= 5.12),
+         libqt5core5a (>= 5.12),
+         libqt5serialport5 (>= 5.12),
+         libstdc++6 (>= 9),
+         libc6 (>= 2.31),
+         libgcc-s1 (>= 4.0)
+Recommends: qt5-gtk-platformtheme | qt5-qpa-platformtheme
+Maintainer: Serial Debug Team <dev@example.com>
+Description: Modern cross-platform serial port debug assistant
+ A feature-rich serial port debugging tool with modern UI,
+ supporting multi-language (Chinese/English), dark/light themes,
+ configurable baud rate/data bits/parity/stop bits, hex display,
+ timestamp logging, timer send, and log export.
+Homepage: https://github.com/ZefengWang/qtSerial

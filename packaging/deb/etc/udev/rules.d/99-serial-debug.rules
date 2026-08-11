@@ -1,0 +1,33 @@
+# 99-serial-debug.rules - udev rules for Serial Debug Assistant
+#
+# Grants dialout group access to common USB-to-serial adapters.
+# The user must be a member of the 'dialout' group to use these ports.
+#   sudo usermod -aG dialout $USER   (then log out and back in)
+
+# Silicon Labs CP2102/CP2105/CP2108 (common in dev boards)
+ATTRS{idVendor}=="10c4", ATTRS{idProduct}=="ea60", MODE="0660", GROUP="dialout"
+ATTRS{idVendor}=="10c4", ATTRS{idProduct}=="ea70", MODE="0660", GROUP="dialout"
+ATTRS{idVendor}=="10c4", ATTRS{idProduct}=="ea71", MODE="0660", GROUP="dialout"
+
+# WCH CH340/CH341 (very common in cheap USB-serial adapters)
+ATTRS{idVendor}=="1a86", ATTRS{idProduct}=="7523", MODE="0660", GROUP="dialout"
+ATTRS{idVendor}=="1a86", ATTRS{idProduct}=="55d4", MODE="0660", GROUP="dialout"
+ATTRS{idVendor}=="1a86", ATTRS{idProduct}=="e010", MODE="0660", GROUP="dialout"
+
+# FTDI FT232/FT2232 (common in professional tools)
+ATTRS{idVendor}=="0403", ATTRS{idProduct}=="6001", MODE="0660", GROUP="dialout"
+ATTRS{idVendor}=="0403", ATTRS{idProduct}=="6010", MODE="0660", GROUP="dialout"
+ATTRS{idVendor}=="0403", ATTRS{idProduct}=="6011", MODE="0660", GROUP="dialout"
+ATTRS{idVendor}=="0403", ATTRS{idProduct}=="6015", MODE="0660", GROUP="dialout"
+
+# Prolific PL2303
+ATTRS{idVendor}=="067b", ATTRS{idProduct}=="2303", MODE="0660", GROUP="dialout"
+
+# CDC ACM (Arduino, STM32, etc.)
+KERNEL=="ttyACM[0-9]*", MODE="0660", GROUP="dialout"
+
+# Generic USB-serial (fallback for unknown chips)
+KERNEL=="ttyUSB[0-9]*", MODE="0660", GROUP="dialout"
+
+# Native serial ports
+KERNEL=="ttyS[0-9]*", MODE="0660", GROUP="dialout"

@@ -50,12 +50,15 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Install system dependencies (X11 + Wayland)
+      - name: Install system dependencies (X11 + Wayland + packaging tools)
         run: |
           sudo apt-get update
           sudo apt-get install -y \
             build-essential \
             patchelf \
+            fakeroot \
+            dpkg-dev \
+            imagemagick \
             libgl1-mesa-dev \
             libxkbcommon-x11-0 \
             libxkbcommon-dev \
@@ -223,11 +226,36 @@ jobs:
           cd build/deploy
           tar -czf ../${{ env.APP_NAME }}-${{ matrix.artifact_suffix }}.tar.gz ${{ env.APP_NAME }}/
 
+      - name: Build .deb package (system Qt → no bundled libs, uses Depends)
+        if: matrix.qt_source == 'system'
+        run: |
+          cd build
+          ../packaging/build-deb.sh \
+            ${{ env.APP_NAME }} \
+            ${{ env.APP_VERSION }} \
+            amd64 \
+            deploy
+          ls -lh deploy/*.deb
+
+      - name: Build AppImage (bundled Qt → portable)
+        if: matrix.qt_source == 'aqt'
+        run: |
+          cd build
+          export PATH="${Qt6_DIR:-${QT_ROOT_DIR}}/bin:$PATH"
+          ../packaging/build-appimage.sh \
+            ${{ env.APP_NAME }} \
+            ${{ env.APP_VERSION }} \
+            deploy
+          ls -lh deploy/*.AppImage 2>/dev/null || true
+
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
           name: ${{ env.APP_NAME }}-${{ matrix.artifact_suffix }}
-          path: build/${{ env.APP_NAME }}-${{ matrix.artifact_suffix }}.tar.gz
+          path: |
+            build/${{ env.APP_NAME }}-${{ matrix.artifact_suffix }}.tar.gz
+            build/deploy/*.deb
+            build/deploy/*.AppImage
 
   # ===================== Windows Build =====================
   windows-build:
@@ -314,4 +342,6 @@ jobs:
           files: |
             */*.tar.gz
             */*.zip
+            */*.deb
+            */*.AppImage
           fail_on_unmatched_files: false

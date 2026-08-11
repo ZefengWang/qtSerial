@@ -254,6 +254,11 @@ void serial::on_openPortButton_clicked() {
       appendReceiveData(tr("[System] Port opened successfully: %1").arg(ui->portComboBox->currentText()));
     } else {
       appendReceiveData(tr("[System] Failed to open port: %1").arg(ui->portComboBox->currentText()));
+      // Show detailed error (permission, etc.) in the receive panel
+      QString errMsg = uart_core_->lastError();
+      if (!errMsg.isEmpty()) {
+          appendReceiveData(errMsg);
+      }
     }
   } else {
     uart_core_->close();

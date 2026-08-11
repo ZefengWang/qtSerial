@@ -1,0 +1,34 @@
+#!/bin/bash
+# postinst script for serial-debug
+# This script runs after the package is installed.
+
+set -e
+
+# --- Trigger udev rule reload ---
+if command -v udevadm &>/dev/null; then
+    udevadm control --reload-rules 2>/dev/null || true
+    udevadm trigger 2>/dev/null || true
+fi
+
+# --- Check dialout group membership (interactive install only) ---
+if [ -n "$SUDO_USER" ] && [ "$SUDO_USER" != "root" ]; then
+    if ! groups "$SUDO_USER" 2>/dev/null | grep -qw dialout; then
+        echo ""
+        echo "┌──────────────────────────────────────────────────────────┐"
+        echo "│  ⚠  Serial port permission notice                       │"
+        echo "│                                                          │"
+        echo "│  To access serial ports as a regular user, add your      │"
+        echo "│  user to the 'dialout' group:                            │"
+        echo "│                                                          │"
+        echo "│    sudo usermod -aG dialout $SUDO_USER                   │"
+        echo "│                                                          │"
+        echo "│  Then log out and back in (or reboot) for the change     │"
+        echo "│  to take effect.                                         │"
+        echo "│                                                          │"
+        echo "│  Alternatively, run the app with: sudo SerialDebug       │"
+        echo "└──────────────────────────────────────────────────────────┘"
+        echo ""
+    fi
+fi
+
+exit 0

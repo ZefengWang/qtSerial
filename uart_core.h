@@ -35,6 +35,9 @@ public:
     void clear_data_buffer_content();
     QByteArray hex_string_to_bytearray(QString HexString);
 
+    /// Get a human-readable description of the last error.
+    QString lastError() const { return lastError_; }
+
 public:
     QString serial_name_;
     int baud_rate_      = 115200;
@@ -52,6 +55,7 @@ public slots:
 private:
     QSerialPort *serial_port_ = nullptr;
     QByteArray serial_buff_;
+    QString lastError_;
 };
 #endif // UARTCORE_H
 

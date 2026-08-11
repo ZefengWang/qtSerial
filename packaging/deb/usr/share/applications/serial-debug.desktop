@@ -1,0 +1,12 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Serial Debug Assistant
+Name[zh_CN]=串口调试助手
+Comment=Modern cross-platform serial port debug tool
+Comment[zh_CN]=现代化跨平台串口调试工具
+Exec=SerialDebug
+Icon=serial-debug
+Categories=Development;Electronics;
+Terminal=false
+StartupNotify=true
