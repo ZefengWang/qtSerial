@@ -45,6 +45,14 @@ DISTFILES += \
 
 RC_FILE = logo.rc
 
+# Linux: set RPATH so the binary finds bundled Qt libs in ./lib next to itself.
+# --disable-new-dtags forces DT_RPATH (searched by dlopen'd Qt plugins too,
+# unlike DT_RUNPATH which only covers direct dependencies).
+unix:!macx {
+    QMAKE_LFLAGS += '-Wl,-rpath,\'\$$ORIGIN/lib\''
+    QMAKE_LFLAGS += '-Wl,--disable-new-dtags'
+}
+
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin
 else: unix:!android: target.path = /opt/$${TARGET}/bin

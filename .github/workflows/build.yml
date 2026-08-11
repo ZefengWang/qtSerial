@@ -55,6 +55,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y \
             build-essential \
+            patchelf \
             libgl1-mesa-dev \
             libxkbcommon-x11-0 \
             libxkbcommon-dev \
@@ -109,43 +110,93 @@ jobs:
           fi
           make -j$(nproc)
 
-      - name: Deploy Qt libraries (X11 + Wayland)
+      - name: Deploy Qt libraries (X11 + Wayland + bundled libs)
         run: |
           cd build
-          mkdir -p deploy/${{ env.APP_NAME }}
-          cp ${{ env.APP_NAME }} deploy/${{ env.APP_NAME }}/
+          APP_DIR="deploy/${{ env.APP_NAME }}"
+          mkdir -p "$APP_DIR/lib"
 
-          # Determine Qt plugins directory
-          QT_PLUGINS_DIR=""
+          # Copy the binary
+          cp ${{ env.APP_NAME }} "$APP_DIR/"
+
+          # --- Determine Qt directories ---
           if [ "${{ matrix.qt_source }}" = "aqt" ]; then
-            # aqtinstall: Qt6_DIR is the Qt root (e.g. .../6.5.3/gcc_64), plugins are under .../plugins/
+            export LD_LIBRARY_PATH="$Qt6_DIR/lib:$LD_LIBRARY_PATH"
             QT_PLUGINS_DIR="$Qt6_DIR/plugins"
+            QT_LIB_DIR="$Qt6_DIR/lib"
           else
-            # System Qt5: qmake -query QT_INSTALL_PLUGINS returns the plugins dir directly
+            QT_LIB_DIR=$(qmake -query QT_INSTALL_LIBS 2>/dev/null || echo "/usr/lib/x86_64-linux-gnu")
             QT_PLUGINS_DIR=$(qmake -query QT_INSTALL_PLUGINS 2>/dev/null || echo "/usr/lib/x86_64-linux-gnu/qt5/plugins")
+            export LD_LIBRARY_PATH="$QT_LIB_DIR:$LD_LIBRARY_PATH"
           fi
-          echo "Qt plugins dir: $QT_PLUGINS_DIR"
+          echo "Qt lib dir:      $QT_LIB_DIR"
+          echo "Qt plugins dir:  $QT_PLUGINS_DIR"
 
-          # Copy Qt platforms plugins (X11 + Wayland)
-          mkdir -p deploy/${{ env.APP_NAME }}/plugins/platforms
-          cp $QT_PLUGINS_DIR/platforms/libqxcb.so deploy/${{ env.APP_NAME }}/plugins/platforms/ 2>/dev/null || true
-          cp $QT_PLUGINS_DIR/platforms/libqwayland-generic.so deploy/${{ env.APP_NAME }}/plugins/platforms/ 2>/dev/null || true
-          cp $QT_PLUGINS_DIR/platforms/libqwayland-egl.so deploy/${{ env.APP_NAME }}/plugins/platforms/ 2>/dev/null || true
+          # --- Collect all shared library dependencies ---
+          # Function: copy a .so to lib/ unless it's a basic system library
+          copy_lib() {
+            local lib="$1"
+            [ -z "$lib" ] || [ ! -f "$lib" ] && return
+            local bn
+            bn=$(basename "$lib")
+            case "$bn" in
+              libc.so*|libm.so*|libpthread.so*|libdl.so*|librt.so*|libstdc++.so*|libgcc_s.so*|ld-linux*|libresolv.so*|libuuid.so*|libanl.so*|libcrypt.so*|libnsl.so*|libnss*|libBrokenLocale*|libSegFault*)
+                echo "  [skip]  $bn"
+                ;;
+              *)
+                cp -nL "$lib" "$APP_DIR/lib/" 2>/dev/null && echo "  [copy]  $bn"
+                ;;
+            esac
+          }
+
+          echo "=== Scanning binary dependencies ==="
+          ldd "$APP_DIR/${{ env.APP_NAME }}" 2>/dev/null | grep "=>" | awk '{print $3}' | sort -u | while read -r lib; do
+            copy_lib "$lib"
+          done || true
+
+          # --- Copy Qt platform plugins (X11 + Wayland) ---
+          echo "=== Copying Qt plugins ==="
+          mkdir -p "$APP_DIR/plugins/platforms"
+          for p in libqxcb.so libqwayland-generic.so libqwayland-egl.so; do
+            if [ -f "$QT_PLUGINS_DIR/platforms/$p" ]; then
+              cp "$QT_PLUGINS_DIR/platforms/$p" "$APP_DIR/plugins/platforms/"
+              echo "  [plugin] platforms/$p"
+            fi
+          done
 
           # Copy Wayland integration plugins
           for dir in wayland-decoration-client wayland-graphics-integration-client wayland-shell-integration; do
             if [ -d "$QT_PLUGINS_DIR/$dir" ]; then
-              mkdir -p "deploy/${{ env.APP_NAME }}/plugins/$dir"
-              cp $QT_PLUGINS_DIR/$dir/*.so "deploy/${{ env.APP_NAME }}/plugins/$dir/" 2>/dev/null || true
+              mkdir -p "$APP_DIR/plugins/$dir"
+              cp "$QT_PLUGINS_DIR/$dir/"*.so "$APP_DIR/plugins/$dir/" 2>/dev/null || true
+              echo "  [plugin] $dir/"
             fi
           done
 
-          # Create startup script with X11/Wayland auto-detection
-          printf '#!/bin/bash\nDIR="$(cd "$(dirname "$0")" && pwd)"\nexport QT_PLUGIN_PATH="$DIR/plugins"\nexport LD_LIBRARY_PATH="$DIR:$LD_LIBRARY_PATH"\nif [ -n "$WAYLAND_DISPLAY" ]; then\n  export QT_QPA_PLATFORM=wayland\nelse\n  export QT_QPA_PLATFORM=xcb\nfi\nexec "$DIR/SerialDebug" "$@"\n' > deploy/${{ env.APP_NAME }}/run.sh
-          chmod +x deploy/${{ env.APP_NAME }}/run.sh
+          # --- Scan plugin dependencies too (plugins may need extra libs) ---
+          echo "=== Scanning plugin dependencies ==="
+          find "$APP_DIR/plugins" -name '*.so' -print0 2>/dev/null | while IFS= read -r -d '' plugin; do
+            ldd "$plugin" 2>/dev/null | grep "=>" | awk '{print $3}' | sort -u | while read -r lib; do
+              copy_lib "$lib"
+            done || true
+          done || true
 
+          # --- Set RPATH on the binary (force DT_RPATH so dlopen'd plugins find libs too) ---
+          echo "=== Setting RPATH ==="
+          patchelf --force-rpath --set-rpath '$ORIGIN/lib' "$APP_DIR/${{ env.APP_NAME }}"
+          echo "RPATH set to: $(patchelf --print-rpath "$APP_DIR/${{ env.APP_NAME }}")"
+
+          # --- Create startup script ---
+          printf '#!/bin/bash\nDIR="$(cd "$(dirname "$0")" && pwd)"\nexport QT_PLUGIN_PATH="$DIR/plugins"\nexport LD_LIBRARY_PATH="$DIR/lib:$DIR:$LD_LIBRARY_PATH"\nif [ -n "$WAYLAND_DISPLAY" ]; then\n  export QT_QPA_PLATFORM=wayland\nelse\n  export QT_QPA_PLATFORM=xcb\nfi\nexec "$DIR/SerialDebug" "$@"\n' > "$APP_DIR/run.sh"
+          chmod +x "$APP_DIR/run.sh"
+
+          # --- Summary ---
+          echo ""
           echo "=== Deployed files ==="
-          find deploy/ -type f | head -30
+          find "$APP_DIR" -type f | sort
+          echo ""
+          echo "=== lib/ contents ($(ls "$APP_DIR/lib/" | wc -l) files) ==="
+          ls -1 "$APP_DIR/lib/"
 
       - name: Package tarball
         run: |

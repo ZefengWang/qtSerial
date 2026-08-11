@@ -101,11 +101,11 @@ cd SerialDebug/
 # 方式一：使用启动脚本（自动检测 X11/Wayland）
 ./run.sh
 
-# 方式二：直接运行
+# 方式二：直接运行（已通过 RPATH 自动查找 ./lib 中的 Qt 库）
 ./SerialDebug
 ```
 
-> 如果运行报错找不到 Qt 库，请使用 `run.sh` 启动脚本，它会自动设置库路径。
+> 所有 Qt 运行时库已打包在 `lib/` 目录中，无需额外安装 Qt。
 
 ### Windows 运行方式
 
