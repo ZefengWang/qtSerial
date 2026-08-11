@@ -21,30 +21,39 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # Ubuntu 26.04 with Qt6 (via aqtinstall)
-          - runner: ubuntu-26.04
-            qt_major: '6'
-            qt_source: 'aqt'
-            qt_version: '6.5.3'
-            label: 'Linux 26.04 (Qt6, x86_64)'
-            artifact_suffix: 'Linux-ubuntu2604-qt6-x86_64'
-            qmake_cmd: 'qmake6'
-          # Ubuntu 24.04 with Qt5 (via system packages)
-          - runner: ubuntu-24.04
-            qt_major: '5'
-            qt_source: 'system'
-            qt_version: ''
-            label: 'Linux 24.04 (Qt5, x86_64)'
-            artifact_suffix: 'Linux-ubuntu2404-qt5-x86_64'
-            qmake_cmd: 'qmake'
-          # Ubuntu 22.04 with Qt5 (via system packages)
+          # Ubuntu 22.04 - Qt5 system .deb + AppImage (most portable glibc)
           - runner: ubuntu-22.04
             qt_major: '5'
             qt_source: 'system'
             qt_version: ''
-            label: 'Linux 22.04 (Qt5, x86_64)'
+            label: 'Linux 22.04 (Qt5, deb+AppImage)'
             artifact_suffix: 'Linux-ubuntu2204-qt5-x86_64'
             qmake_cmd: 'qmake'
+            build_deb: 'true'
+            build_appimage: 'true'
+            build_tarball: 'false'
+          # Ubuntu 24.04 - Qt5 system .deb + tarball
+          - runner: ubuntu-24.04
+            qt_major: '5'
+            qt_source: 'system'
+            qt_version: ''
+            label: 'Linux 24.04 (Qt5, deb)'
+            artifact_suffix: 'Linux-ubuntu2404-qt5-x86_64'
+            qmake_cmd: 'qmake'
+            build_deb: 'true'
+            build_appimage: 'false'
+            build_tarball: 'true'
+          # Ubuntu 26.04 - Qt6 aqt .deb + tarball
+          - runner: ubuntu-26.04
+            qt_major: '6'
+            qt_source: 'aqt'
+            qt_version: '6.5.3'
+            label: 'Linux 26.04 (Qt6, deb)'
+            artifact_suffix: 'Linux-ubuntu2604-qt6-x86_64'
+            qmake_cmd: 'qmake6'
+            build_deb: 'true'
+            build_appimage: 'false'
+            build_tarball: 'true'
 
     steps:
       - name: Checkout code
@@ -120,45 +129,58 @@ jobs:
           lrelease ../MySerial_zh_CN.ts -qm MySerial_zh_CN.qm
           ls -la MySerial_zh_CN.qm
 
-      - name: Deploy Qt libraries (X11 + Wayland + bundled libs)
+      - name: Build .deb package
+        if: matrix.build_deb == 'true'
+        run: |
+          cd build
+          ../packaging/build-deb.sh \
+            ${{ env.APP_NAME }} \
+            ${{ env.APP_VERSION }} \
+            amd64 \
+            deploy \
+            ${{ matrix.qt_major }}
+          ls -lh deploy/*.deb
+
+      - name: Build AppImage (Qt5, oldest glibc — most portable)
+        if: matrix.build_appimage == 'true'
+        run: |
+          cd build
+          ../packaging/build-appimage.sh \
+            ${{ env.APP_NAME }} \
+            ${{ env.APP_VERSION }}-${{ matrix.artifact_suffix }} \
+            deploy
+          ls -lh deploy/*.AppImage 2>/dev/null || true
+
+      - name: Deploy Qt6 bundled libs (tarball)
+        if: matrix.qt_source == 'aqt'
         run: |
           cd build
           APP_DIR="deploy/${{ env.APP_NAME }}"
+          rm -rf "$APP_DIR"
           mkdir -p "$APP_DIR/lib"
 
           # Copy the binary
           cp ${{ env.APP_NAME }} "$APP_DIR/"
 
-          # Copy compiled translation file (also embedded in resources, but keep external copy)
+          # Copy compiled translation
           if [ -f "MySerial_zh_CN.qm" ]; then
             mkdir -p "$APP_DIR/translations"
             cp MySerial_zh_CN.qm "$APP_DIR/translations/"
             echo "  [qm] copied MySerial_zh_CN.qm"
           fi
 
-          # --- Determine Qt directories ---
-          # install-qt-action v4 sets QT_ROOT_DIR and QT_PLUGIN_PATH (not Qt6_DIR)
-          if [ "${{ matrix.qt_source }}" = "aqt" ]; then
-            QT_ROOT="${Qt6_DIR:-${QT_ROOT_DIR:-}}"
-            QT_LIB_DIR="${QT_ROOT}/lib"
-            QT_PLUGINS_DIR="${QT_PLUGIN_PATH:-${QT_ROOT}/plugins}"
-            export LD_LIBRARY_PATH="${QT_LIB_DIR}:${LD_LIBRARY_PATH}"
-          else
-            QT_LIB_DIR=$(qmake -query QT_INSTALL_LIBS 2>/dev/null || echo "/usr/lib/x86_64-linux-gnu")
-            QT_PLUGINS_DIR=$(qmake -query QT_INSTALL_PLUGINS 2>/dev/null || echo "/usr/lib/x86_64-linux-gnu/qt5/plugins")
-            export LD_LIBRARY_PATH="${QT_LIB_DIR}:${LD_LIBRARY_PATH}"
-          fi
+          QT_ROOT="${Qt6_DIR:-${QT_ROOT_DIR:-}}"
+          QT_LIB_DIR="${QT_ROOT}/lib"
+          QT_PLUGINS_DIR="${QT_PLUGIN_PATH:-${QT_ROOT}/plugins}"
+          export LD_LIBRARY_PATH="${QT_LIB_DIR}:${LD_LIBRARY_PATH}"
+
           echo "Qt lib dir:      $QT_LIB_DIR"
           echo "Qt plugins dir:  $QT_PLUGINS_DIR"
-          echo "Plugins exists:  $([ -d "$QT_PLUGINS_DIR" ] && echo 'yes' || echo 'NO - will try alternatives')"
 
-          # --- Collect all shared library dependencies ---
-          # Function: copy a .so to lib/ unless it's a basic system library
           copy_lib() {
             local lib="$1"
             [ -z "$lib" ] || [ ! -f "$lib" ] && return
-            local bn
-            bn=$(basename "$lib")
+            local bn=$(basename "$lib")
             case "$bn" in
               libc.so*|libm.so*|libpthread.so*|libdl.so*|librt.so*|libstdc++.so*|libgcc_s.so*|ld-linux*|libresolv.so*|libuuid.so*|libanl.so*|libcrypt.so*|libnsl.so*|libnss*|libBrokenLocale*|libSegFault*)
                 echo "  [skip]  $bn"
@@ -174,7 +196,6 @@ jobs:
             copy_lib "$lib"
           done || true
 
-          # --- Copy Qt platform plugins (X11 + Wayland) ---
           echo "=== Copying Qt plugins ==="
           mkdir -p "$APP_DIR/plugins/platforms"
           for p in libqxcb.so libqwayland-generic.so libqwayland-egl.so; do
@@ -184,7 +205,6 @@ jobs:
             fi
           done
 
-          # Copy Wayland integration plugins
           for dir in wayland-decoration-client wayland-graphics-integration-client wayland-shell-integration; do
             if [ -d "$QT_PLUGINS_DIR/$dir" ]; then
               mkdir -p "$APP_DIR/plugins/$dir"
@@ -193,7 +213,6 @@ jobs:
             fi
           done
 
-          # --- Scan plugin dependencies too (plugins may need extra libs) ---
           echo "=== Scanning plugin dependencies ==="
           find "$APP_DIR/plugins" -name '*.so' -print0 2>/dev/null | while IFS= read -r -d '' plugin; do
             ldd "$plugin" 2>/dev/null | grep "=>" | awk '{print $3}' | sort -u | while read -r lib; do
@@ -201,49 +220,74 @@ jobs:
             done || true
           done || true
 
-          # --- Set RPATH on the binary (force DT_RPATH so dlopen'd plugins find libs too) ---
           echo "=== Setting RPATH ==="
           patchelf --force-rpath --set-rpath '$ORIGIN/lib' "$APP_DIR/${{ env.APP_NAME }}"
           echo "RPATH set to: $(patchelf --print-rpath "$APP_DIR/${{ env.APP_NAME }}")"
 
-          # --- Create startup script ---
           printf '#!/bin/bash\nDIR="$(cd "$(dirname "$0")" && pwd)"\nexport QT_PLUGIN_PATH="$DIR/plugins"\nexport LD_LIBRARY_PATH="$DIR/lib:$DIR:$LD_LIBRARY_PATH"\nif [ -n "$WAYLAND_DISPLAY" ]; then\n  export QT_QPA_PLATFORM=wayland\nelse\n  export QT_QPA_PLATFORM=xcb\nfi\nexec "$DIR/SerialDebug" "$@"\n' > "$APP_DIR/run.sh"
           chmod +x "$APP_DIR/run.sh"
 
-          # --- Summary ---
           echo ""
           echo "=== Deployed files ==="
           find "$APP_DIR" -type f | sort
-          echo ""
-          echo "=== lib/ contents ($(ls "$APP_DIR/lib/" | wc -l) files) ==="
-          ls -1 "$APP_DIR/lib/"
+
+      - name: Deploy Qt5 bundled libs (tarball)
+        if: matrix.build_tarball == 'true' && matrix.qt_source == 'system'
+        run: |
+          cd build
+          APP_DIR="deploy/${{ env.APP_NAME }}"
+          rm -rf "$APP_DIR"
+          mkdir -p "$APP_DIR/lib"
+
+          cp ${{ env.APP_NAME }} "$APP_DIR/"
+
+          if [ -f "MySerial_zh_CN.qm" ]; then
+            mkdir -p "$APP_DIR/translations"
+            cp MySerial_zh_CN.qm "$APP_DIR/translations/"
+          fi
+
+          QT_LIB_DIR=$(qmake -query QT_INSTALL_LIBS 2>/dev/null || echo "/usr/lib/x86_64-linux-gnu")
+          QT_PLUGINS_DIR=$(qmake -query QT_INSTALL_PLUGINS 2>/dev/null || echo "/usr/lib/x86_64-linux-gnu/qt5/plugins")
+          export LD_LIBRARY_PATH="${QT_LIB_DIR}:${LD_LIBRARY_PATH}"
+
+          copy_lib() {
+            local lib="$1"
+            [ -z "$lib" ] || [ ! -f "$lib" ] && return
+            local bn=$(basename "$lib")
+            case "$bn" in
+              libc.so*|libm.so*|libpthread.so*|libdl.so*|librt.so*|libstdc++.so*|libgcc_s.so*|ld-linux*|libresolv.so*|libuuid.so*|libanl.so*|libcrypt.so*|libnsl.so*|libnss*|libBrokenLocale*|libSegFault*)
+                echo "  [skip]  $bn"
+                ;;
+              *)
+                cp -nL "$lib" "$APP_DIR/lib/" 2>/dev/null && echo "  [copy]  $bn"
+                ;;
+            esac
+          }
+
+          echo "=== Scanning binary dependencies ==="
+          ldd "$APP_DIR/${{ env.APP_NAME }}" 2>/dev/null | grep "=>" | awk '{print $3}' | sort -u | while read -r lib; do
+            copy_lib "$lib"
+          done || true
+
+          echo "=== Copying Qt plugins ==="
+          mkdir -p "$APP_DIR/plugins/platforms"
+          for p in libqxcb.so libqwayland-generic.so libqwayland-egl.so; do
+            if [ -f "$QT_PLUGINS_DIR/platforms/$p" ]; then
+              cp "$QT_PLUGINS_DIR/platforms/$p" "$APP_DIR/plugins/platforms/"
+            fi
+          done
+
+          echo "=== Setting RPATH ==="
+          patchelf --force-rpath --set-rpath '$ORIGIN/lib' "$APP_DIR/${{ env.APP_NAME }}"
+
+          printf '#!/bin/bash\nDIR="$(cd "$(dirname "$0")" && pwd)"\nexport QT_PLUGIN_PATH="$DIR/plugins"\nexport LD_LIBRARY_PATH="$DIR/lib:$DIR:$LD_LIBRARY_PATH"\nif [ -n "$WAYLAND_DISPLAY" ]; then\n  export QT_QPA_PLATFORM=wayland\nelse\n  export QT_QPA_PLATFORM=xcb\nfi\nexec "$DIR/SerialDebug" "$@"\n' > "$APP_DIR/run.sh"
+          chmod +x "$APP_DIR/run.sh"
 
       - name: Package tarball
+        if: matrix.build_tarball == 'true'
         run: |
           cd build/deploy
           tar -czf ../${{ env.APP_NAME }}-${{ matrix.artifact_suffix }}.tar.gz ${{ env.APP_NAME }}/
-
-      - name: Build .deb package (system Qt → no bundled libs, uses Depends)
-        if: matrix.qt_source == 'system'
-        run: |
-          cd build
-          ../packaging/build-deb.sh \
-            ${{ env.APP_NAME }} \
-            ${{ env.APP_VERSION }} \
-            amd64 \
-            deploy
-          ls -lh deploy/*.deb
-
-      - name: Build AppImage (bundled Qt → portable)
-        if: matrix.qt_source == 'aqt'
-        run: |
-          cd build
-          export PATH="${Qt6_DIR:-${QT_ROOT_DIR}}/bin:$PATH"
-          ../packaging/build-appimage.sh \
-            ${{ env.APP_NAME }} \
-            ${{ env.APP_VERSION }} \
-            deploy
-          ls -lh deploy/*.AppImage 2>/dev/null || true
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
