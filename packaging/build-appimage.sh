@@ -19,7 +19,7 @@ OUTDIR="${3:?}"
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 APP_DIR="${OUTDIR}/AppDir"
-APPIMAGE_FILE="${OUTDIR}/SerialDebug-${VERSION}-x86_64.AppImage"
+APPIMAGE_FILE="${OUTDIR}/SerialDebug-${VERSION}.AppImage"
 
 # Clean
 rm -rf "$APP_DIR"
