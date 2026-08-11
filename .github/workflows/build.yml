@@ -14,6 +14,9 @@ env:
 
 jobs:
   # ===================== Linux Build =====================
+  # 说明：.deb 直接依赖系统 Qt（在 Depends 中声明），因此用系统 Qt 编译，
+  # 产物在目标发行版（含 Ubuntu 26.04，Qt6 ABI 兼容）上可直接安装运行。
+  # AppImage 在最低版本（22.04）上构建，glibc 最旧，兼容性最好。
   linux-build:
     name: ${{ matrix.label }}
     runs-on: ${{ matrix.runner }}
@@ -21,36 +24,23 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # Ubuntu 22.04 - Qt5 system .deb + AppImage (most portable glibc)
+          # Ubuntu 22.04 - 系统 Qt5：.deb + AppImage（最便携 glibc）
           - runner: ubuntu-22.04
             qt_major: '5'
-            qt_source: 'system'
-            qt_version: ''
             label: 'Linux 22.04 (Qt5, deb+AppImage)'
             artifact_suffix: 'Linux-ubuntu2204-qt5-x86_64'
             qmake_cmd: 'qmake'
+            qt_dev_pkgs: 'qtbase5-dev qttools5-dev-tools libqt5serialport5-dev qtchooser'
             build_deb: 'true'
             build_appimage: 'true'
             build_tarball: 'false'
-          # Ubuntu 24.04 - Qt5 system .deb + tarball
+          # Ubuntu 24.04 - 系统 Qt6：.deb + tarball（兼容 Ubuntu 26.04）
           - runner: ubuntu-24.04
-            qt_major: '5'
-            qt_source: 'system'
-            qt_version: ''
-            label: 'Linux 24.04 (Qt5, deb)'
-            artifact_suffix: 'Linux-ubuntu2404-qt5-x86_64'
-            qmake_cmd: 'qmake'
-            build_deb: 'true'
-            build_appimage: 'false'
-            build_tarball: 'true'
-          # Ubuntu 26.04 - Qt6 aqt .deb + tarball
-          - runner: ubuntu-26.04
             qt_major: '6'
-            qt_source: 'aqt'
-            qt_version: '6.5.3'
-            label: 'Linux 26.04 (Qt6, deb)'
-            artifact_suffix: 'Linux-ubuntu2604-qt6-x86_64'
+            label: 'Linux 24.04 (Qt6, deb+tarball)'
+            artifact_suffix: 'Linux-ubuntu2404-qt6-x86_64'
             qmake_cmd: 'qmake6'
+            qt_dev_pkgs: 'qt6-base-dev qt6-qmake qttools6-dev-tools libqt6serialport6-dev'
             build_deb: 'true'
             build_appimage: 'false'
             build_tarball: 'true'
@@ -83,49 +73,25 @@ jobs:
             libxcb-xinerama0-dev \
             libxcb-xkb-dev
 
-      - name: Install Qt5 (system packages)
-        if: matrix.qt_source == 'system'
+      - name: Install system Qt${{ matrix.qt_major }} (apt)
         run: |
-          sudo apt-get install -y \
-            qtbase5-dev \
-            qttools5-dev-tools \
-            libqt5serialport5-dev \
-            qtchooser
-
-      - name: Install Qt6 (aqtinstall)
-        if: matrix.qt_source == 'aqt'
-        uses: jurplel/install-qt-action@v4
-        with:
-          version: ${{ matrix.qt_version }}
-          host: 'linux'
-          target: 'desktop'
-          arch: 'gcc_64'
-          modules: 'qtserialport'
-          dir: '${{ github.workspace }}'
+          sudo apt-get update
+          sudo apt-get install -y ${{ matrix.qt_dev_pkgs }}
 
       - name: Configure project
         run: |
           mkdir -p build
           cd build
-          if [ "${{ matrix.qt_source }}" = "aqt" ]; then
-            export PATH="${Qt6_DIR:-${QT_ROOT_DIR}}/bin:$PATH"
-          fi
           ${{ matrix.qmake_cmd }} ../MySerial.pro CONFIG+=Release
 
       - name: Build
         run: |
           cd build
-          if [ "${{ matrix.qt_source }}" = "aqt" ]; then
-            export PATH="${Qt6_DIR:-${QT_ROOT_DIR}}/bin:$PATH"
-          fi
           make -j$(nproc)
 
       - name: Compile translations (lrelease)
         run: |
           cd build
-          if [ "${{ matrix.qt_source }}" = "aqt" ]; then
-            export PATH="${Qt6_DIR:-${QT_ROOT_DIR}}/bin:$PATH"
-          fi
           lrelease ../MySerial_zh_CN.ts -qm MySerial_zh_CN.qm
           ls -la MySerial_zh_CN.qm
 
@@ -139,6 +105,10 @@ jobs:
             amd64 \
             deploy \
             ${{ matrix.qt_major }}
+          # 重命名 deb，使其包含平台后缀，避免多个平台同名覆盖
+          for f in deploy/*.deb; do
+            mv "$f" "deploy/${APP_NAME}_${APP_VERSION}_${matrix.artifact_suffix}.deb"
+          done
           ls -lh deploy/*.deb
 
       - name: Build AppImage (Qt5, oldest glibc — most portable)
@@ -151,27 +121,23 @@ jobs:
             deploy
           ls -lh deploy/*.AppImage 2>/dev/null || true
 
-      - name: Deploy Qt6 bundled libs (tarball)
-        if: matrix.qt_source == 'aqt'
+      - name: Deploy bundled Qt libs (tarball)
+        if: matrix.build_tarball == 'true'
         run: |
           cd build
           APP_DIR="deploy/${{ env.APP_NAME }}"
           rm -rf "$APP_DIR"
           mkdir -p "$APP_DIR/lib"
 
-          # Copy the binary
           cp ${{ env.APP_NAME }} "$APP_DIR/"
 
-          # Copy compiled translation
           if [ -f "MySerial_zh_CN.qm" ]; then
             mkdir -p "$APP_DIR/translations"
             cp MySerial_zh_CN.qm "$APP_DIR/translations/"
-            echo "  [qm] copied MySerial_zh_CN.qm"
           fi
 
-          QT_ROOT="${Qt6_DIR:-${QT_ROOT_DIR:-}}"
-          QT_LIB_DIR="${QT_ROOT}/lib"
-          QT_PLUGINS_DIR="${QT_PLUGIN_PATH:-${QT_ROOT}/plugins}"
+          QT_LIB_DIR=$(${{ matrix.qmake_cmd }} -query QT_INSTALL_LIBS 2>/dev/null || echo "/usr/lib/x86_64-linux-gnu")
+          QT_PLUGINS_DIR=$(${{ matrix.qmake_cmd }} -query QT_INSTALL_PLUGINS 2>/dev/null || echo "/usr/lib/x86_64-linux-gnu/qt5/plugins")
           export LD_LIBRARY_PATH="${QT_LIB_DIR}:${LD_LIBRARY_PATH}"
 
           echo "Qt lib dir:      $QT_LIB_DIR"
@@ -205,14 +171,6 @@ jobs:
             fi
           done
 
-          for dir in wayland-decoration-client wayland-graphics-integration-client wayland-shell-integration; do
-            if [ -d "$QT_PLUGINS_DIR/$dir" ]; then
-              mkdir -p "$APP_DIR/plugins/$dir"
-              cp "$QT_PLUGINS_DIR/$dir/"*.so "$APP_DIR/plugins/$dir/" 2>/dev/null || true
-              echo "  [plugin] $dir/"
-            fi
-          done
-
           echo "=== Scanning plugin dependencies ==="
           find "$APP_DIR/plugins" -name '*.so' -print0 2>/dev/null | while IFS= read -r -d '' plugin; do
             ldd "$plugin" 2>/dev/null | grep "=>" | awk '{print $3}' | sort -u | while read -r lib; do
@@ -231,72 +189,32 @@ jobs:
           echo "=== Deployed files ==="
           find "$APP_DIR" -type f | sort
 
-      - name: Deploy Qt5 bundled libs (tarball)
-        if: matrix.build_tarball == 'true' && matrix.qt_source == 'system'
-        run: |
-          cd build
-          APP_DIR="deploy/${{ env.APP_NAME }}"
-          rm -rf "$APP_DIR"
-          mkdir -p "$APP_DIR/lib"
-
-          cp ${{ env.APP_NAME }} "$APP_DIR/"
-
-          if [ -f "MySerial_zh_CN.qm" ]; then
-            mkdir -p "$APP_DIR/translations"
-            cp MySerial_zh_CN.qm "$APP_DIR/translations/"
-          fi
-
-          QT_LIB_DIR=$(qmake -query QT_INSTALL_LIBS 2>/dev/null || echo "/usr/lib/x86_64-linux-gnu")
-          QT_PLUGINS_DIR=$(qmake -query QT_INSTALL_PLUGINS 2>/dev/null || echo "/usr/lib/x86_64-linux-gnu/qt5/plugins")
-          export LD_LIBRARY_PATH="${QT_LIB_DIR}:${LD_LIBRARY_PATH}"
-
-          copy_lib() {
-            local lib="$1"
-            [ -z "$lib" ] || [ ! -f "$lib" ] && return
-            local bn=$(basename "$lib")
-            case "$bn" in
-              libc.so*|libm.so*|libpthread.so*|libdl.so*|librt.so*|libstdc++.so*|libgcc_s.so*|ld-linux*|libresolv.so*|libuuid.so*|libanl.so*|libcrypt.so*|libnsl.so*|libnss*|libBrokenLocale*|libSegFault*)
-                echo "  [skip]  $bn"
-                ;;
-              *)
-                cp -nL "$lib" "$APP_DIR/lib/" 2>/dev/null && echo "  [copy]  $bn"
-                ;;
-            esac
-          }
-
-          echo "=== Scanning binary dependencies ==="
-          ldd "$APP_DIR/${{ env.APP_NAME }}" 2>/dev/null | grep "=>" | awk '{print $3}' | sort -u | while read -r lib; do
-            copy_lib "$lib"
-          done || true
-
-          echo "=== Copying Qt plugins ==="
-          mkdir -p "$APP_DIR/plugins/platforms"
-          for p in libqxcb.so libqwayland-generic.so libqwayland-egl.so; do
-            if [ -f "$QT_PLUGINS_DIR/platforms/$p" ]; then
-              cp "$QT_PLUGINS_DIR/platforms/$p" "$APP_DIR/plugins/platforms/"
-            fi
-          done
-
-          echo "=== Setting RPATH ==="
-          patchelf --force-rpath --set-rpath '$ORIGIN/lib' "$APP_DIR/${{ env.APP_NAME }}"
-
-          printf '#!/bin/bash\nDIR="$(cd "$(dirname "$0")" && pwd)"\nexport QT_PLUGIN_PATH="$DIR/plugins"\nexport LD_LIBRARY_PATH="$DIR/lib:$DIR:$LD_LIBRARY_PATH"\nif [ -n "$WAYLAND_DISPLAY" ]; then\n  export QT_QPA_PLATFORM=wayland\nelse\n  export QT_QPA_PLATFORM=xcb\nfi\nexec "$DIR/SerialDebug" "$@"\n' > "$APP_DIR/run.sh"
-          chmod +x "$APP_DIR/run.sh"
-
       - name: Package tarball
         if: matrix.build_tarball == 'true'
         run: |
           cd build/deploy
           tar -czf ../${{ env.APP_NAME }}-${{ matrix.artifact_suffix }}.tar.gz ${{ env.APP_NAME }}/
 
-      - name: Upload build artifacts
+      - name: Upload .deb package
+        if: matrix.build_deb == 'true'
         uses: actions/upload-artifact@v7
         with:
-          name: ${{ env.APP_NAME }}-${{ matrix.artifact_suffix }}
-          path: |
-            build/${{ env.APP_NAME }}-${{ matrix.artifact_suffix }}.tar.gz
-            build/deploy/*.deb
-            build/deploy/*.AppImage
+          name: ${{ env.APP_NAME }}-${{ matrix.artifact_suffix }}-deb
+          path: build/deploy/*.deb
+
+      - name: Upload AppImage
+        if: matrix.build_appimage == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ env.APP_NAME }}-${{ matrix.artifact_suffix }}-AppImage
+          path: build/deploy/*.AppImage
+
+      - name: Upload tarball
+        if: matrix.build_tarball == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ env.APP_NAME }}-${{ matrix.artifact_suffix }}-tarball
+          path: build/${{ env.APP_NAME }}-${{ matrix.artifact_suffix }}.tar.gz
 
   # ===================== Windows Build =====================
   windows-build:
@@ -379,8 +297,12 @@ jobs:
         with:
           ref: ${{ github.ref }}
 
-      - name: Download all artifacts
+      - name: Download all artifacts (flattened)
         uses: actions/download-artifact@v7
+        with:
+          pattern: 'SerialDebug-*'
+          merge-multiple: true
+          path: artifacts
 
       - name: Create Release
         env:
@@ -388,49 +310,63 @@ jobs:
         run: |
           set -e
 
-          # Delete existing release if any (from previous failed run)
-          gh release delete ${{ github.ref_name }} --yes 2>/dev/null || true
-
-          # Delete existing tag if any (from previous failed run)
-          git push origin :refs/tags/${{ github.ref_name }} 2>/dev/null || true
-
           NOTES="## Serial Debug Assistant v${{ env.APP_VERSION }}
 
           ### 新增功能 / New Features
-          - 现代 UI 重设计，卡片式布局，暗色/亮色/Ubuntu 三套主题
-          - Modern UI redesign with card-based layout, dark/light/Ubuntu themes
-          - 多语言框架（中文/英文），支持菜单切换
-          - Multi-language framework (Chinese/English) with menu switching
-          - 模态对话框 & 居中显示
-          - Modal dialogs with proper centering
+          - 现代 UI 重设计，卡片式布局
+          - Modern UI redesign with card-based layout
+          - 默认跟随系统主题（GNOME/Adwaita），另提供暗色/亮色可选
+          - Defaults to the native system theme, with dark/light as options
+          - 多语言框架（中文/英文），菜单内切换
+          - Multi-language framework (Chinese/English) switchable from the menu
+          - 模态对话框，应用级模态，焦点不穿透
+          - Modal dialogs with true application-level modality
 
-          ### 打包格式 / Package Formats
-          | 平台 | 包类型 |
-          |------|--------|
-          | Ubuntu 22.04 | .deb + AppImage（最便携 glibc） |
-          | Ubuntu 24.04 | .deb |
-          | Ubuntu 26.04 | .deb + tarball |
-          | Windows | .zip |
+          ### 下载说明 / Download
+          - **deb 包**：直接下载 .deb 文件（无需解压 zip）。
+            - \`SerialDebug_2.0.1_Linux-ubuntu2204-qt5-x86_64.deb\`（Qt5）
+            - \`SerialDebug_2.0.1_Linux-ubuntu2404-qt6-x86_64.deb\`（Qt6，兼容 Ubuntu 26.04）
+          - **不要从 Actions 的 Artifacts 下载**——那里会把文件打成 zip。请从本 Release 的 Assets 直接下载原始 .deb。
+          - **AppImage**：下载后 chmod +x 直接运行，无需安装。
+          - **Windows**：解压 zip 后运行 SerialDebug.exe。
 
           ### 安装说明 / Installation
-          - **deb**: 会自动安装 Qt 依赖和 udev 规则，将用户加入 dialout 组
-          - **AppImage**: 下载后 chmod +x 直接运行，无需安装
-          - **Windows**: 解压后直接运行 SerialDebug.exe
+          - **deb**: \`sudo dpkg -i SerialDebug_*.deb\`，会自动安装 Qt 依赖和 udev 规则，并将当前用户加入 dialout 组。
+          - **AppImage**: \`chmod +x SerialDebug_*.AppImage && ./SerialDebug_*.AppImage\`
 
           ### 完整变更 / Full Changelog
           ${{ github.event.head_commit.message || 'See commits for details' }}"
 
-          # Step 1: Create release (without assets to avoid race condition)
           echo "=== Creating release ==="
+          # 先创建，若已存在则更新 notes
           gh release create ${{ github.ref_name }} \
+            --title "Release ${{ github.ref_name }}" \
+            --notes "$NOTES" 2>/dev/null || \
+          gh release edit ${{ github.ref_name }} \
             --title "Release ${{ github.ref_name }}" \
             --notes "$NOTES"
 
-          # Step 2: Upload assets one by one
-          echo "=== Uploading assets ==="
-          find . -type f \( -name '*.tar.gz' -o -name '*.zip' -o -name '*.deb' -o -name '*.AppImage' \) 2>/dev/null | while read -r file; do
-            echo "  Uploading: $file"
-            gh release upload ${{ github.ref_name }} "$file" --clobber
-            echo "  Done: $file"
+      - name: Upload assets to Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -e
+          TAG=${{ github.ref_name }}
+          echo "=== 上传以下文件作为原始 Release 资源 ==="
+          ls -lh artifacts/ || true
+          for f in artifacts/*; do
+            [ -f "$f" ] || continue
+            echo "  Uploading: $(basename "$f")"
+            for i in 1 2 3; do
+              if gh release upload "$TAG" "$f" --clobber 2>/dev/null; then
+                echo "  Done: $(basename "$f")"
+                break
+              else
+                echo "  Retry $i/3..."
+                sleep 3
+              fi
+            done
           done
+          echo "=== Release 资源列表 ==="
+          gh release view "$TAG" --json assets -q '.assets[].name' || true
           echo "=== Release complete ==="

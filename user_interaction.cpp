@@ -14,11 +14,37 @@
 #include <QSettings>
 #include <QEvent>
 #include <QApplication>
+#include <QScrollArea>
+#include <QHBoxLayout>
 
 serial::serial(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::serial){
   ui->setupUi(this);
+
+  // Wrap sidebar in scroll area to prevent content truncation
+  QScrollArea *sidebarScroll = new QScrollArea(this);
+  sidebarScroll->setWidget(ui->sidebarWidget);
+  sidebarScroll->setWidgetResizable(true);
+  sidebarScroll->setFrameShape(QFrame::NoFrame);
+  sidebarScroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+  // Replace the sidebar widget in the main layout
+  QLayout *mainLayout = ui->centralWidget->layout();
+  if (mainLayout) {
+      QLayoutItem *sidebarItem = nullptr;
+      for (int i = 0; i < mainLayout->count(); ++i) {
+          if (mainLayout->itemAt(i)->widget() == ui->sidebarWidget) {
+              sidebarItem = mainLayout->itemAt(i);
+              break;
+          }
+      }
+      if (sidebarItem) {
+          mainLayout->removeWidget(ui->sidebarWidget);
+          sidebarScroll->setWidget(ui->sidebarWidget);
+          // Insert scroll area at the same position
+          dynamic_cast<QHBoxLayout*>(mainLayout)->insertWidget(0, sidebarScroll);
+      }
+  }
 
   // 初始化串口
   uart_core_ = new Uartcore;
@@ -174,7 +200,8 @@ void serial::refreshPortList() {
 
 void serial::updateConnectionStatus(bool connected) {
   if (connected) {
-    ui->statusIndicator->setStyleSheet("background-color: #9ece6a; border-radius: 5px;");
+    // 使用中性的通用色，在系统原生亮/暗风格下都可读
+    ui->statusIndicator->setStyleSheet("background-color: #2ea043; border-radius: 5px;");
     ui->connectionStatusLabel->setText(tr("Connected"));
     QString portInfo = QString("%1 @ %2 baud")
         .arg(ui->portComboBox->currentText())
@@ -188,7 +215,7 @@ void serial::updateConnectionStatus(bool connected) {
 
     ui->openPortButton->setText(tr("Close Port"));
   } else {
-    ui->statusIndicator->setStyleSheet("background-color: #f7768e; border-radius: 5px;");
+    ui->statusIndicator->setStyleSheet("background-color: #d1242f; border-radius: 5px;");
     ui->connectionStatusLabel->setText(tr("Disconnected"));
     ui->portInfoLabel->setText(tr("No port selected"));
 
@@ -359,17 +386,28 @@ void serial::on_advancedSettingsBtn_clicked() {
   // 创建模态对话框，传入 this 作为 parent
   setting param(this);
 
-  // 设置为模态
+  // 保留标题栏/关闭按钮，去掉最小化/最大化
+  param.setWindowFlags(Qt::Dialog | Qt::CustomizeWindowHint | Qt::WindowTitleHint | Qt::WindowCloseButtonHint);
+
+  // 应用级模态：阻塞整个应用的所有窗口，焦点不会穿透到主窗口
   param.setModal(true);
+  param.setWindowModality(Qt::ApplicationModal);
 
   // 加载串口数据
   param.find_available_serial_ports_and_add(uart_core_);
 
+  // 调整为实际内容大小
+  param.adjustSize();
+
   // 居中到主窗口（this 是顶层窗口，parentWidget() 为 null，需以主窗口几何为中心）
   QRect parentGeometry = this->geometry();
-  QSize dlgSize = param.sizeHint();
-  QPoint center = parentGeometry.center() - QPoint(dlgSize.width() / 2, dlgSize.height() / 2);
-  param.move(center);
+  QSize dlgSize = param.size();
+  // 防止对话框比主窗口还大导致偏移越界
+  int x = parentGeometry.center().x() - dlgSize.width() / 2;
+  int y = parentGeometry.center().y() - dlgSize.height() / 2;
+  x = qMax(x, parentGeometry.left());
+  y = qMax(y, parentGeometry.top());
+  param.move(x, y);
 
   // 模态执行
   param.exec();

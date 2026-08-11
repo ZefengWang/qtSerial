@@ -12,15 +12,16 @@ int main(int argc, char *argv[])
   // 设置应用程序信息
   a.setApplicationName("Serial Debug Assistant");
   a.setOrganizationName("SerialDebug");
-  a.setApplicationVersion("2.0");
+  a.setApplicationVersion("2.0.1");
   a.setWindowIcon(QIcon(":/logo"));
 
   // 初始化语言管理器（从 QSettings 读取上次选择，或使用系统语言）
   LanguageManager::instance().initialize();
 
-  // 应用保存的主题
+  // 应用保存的主题；默认使用 "system" —— 跟随系统原生风格（GNOME/Adwaita），
+  // 而不是强绑某一种配色。暗色/亮色仅作为用户主动选择的选项。
   QSettings settings;
-  QString savedTheme = settings.value("theme", "dark").toString();
+  QString savedTheme = settings.value("theme", "system").toString();
   ThemeManager::instance().applyTheme(savedTheme);
 
   serial w;

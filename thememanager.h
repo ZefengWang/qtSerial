@@ -18,7 +18,7 @@ class ThemeManager : public QObject
 public:
     static ThemeManager &instance();
 
-    /// Apply the named theme (e.g. "dark", "light").
+    /// Apply the named theme (e.g. "dark", "light", "system").
     void applyTheme(const QString &themeName);
 
     /// Get the list of available theme names.

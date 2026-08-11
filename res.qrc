@@ -3,6 +3,5 @@
         <file alias="logo">logo.ico</file>
         <file>styles/dark.qss</file>
         <file>styles/light.qss</file>
-        <file>styles/ubuntu.qss</file>
     </qresource>
 </RCC>
