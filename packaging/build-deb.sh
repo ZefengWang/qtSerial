@@ -6,9 +6,10 @@
 #   ./build-deb.sh <app-binary-path> <version> <arch> <output-dir>
 #
 # Example:
-#   ./build-deb.sh build/SerialDebug 2.0.0 amd64 build/deploy
+#   ./build-deb.sh build/SerialDebug 2.0.1 amd64 build/deploy
 #
 # The .deb declares Depends on system Qt5 packages (NOT bundled).
+# No external dependencies beyond dpkg-deb and coreutils.
 # ============================================================
 set -euo pipefail
 
@@ -48,21 +49,9 @@ mkdir -p "$DEB_ROOT/etc/udev/rules.d"
 cp "$SCRIPT_DIR/deb/etc/udev/rules.d/99-serial-debug.rules" \
    "$DEB_ROOT/etc/udev/rules.d/"
 
-# Generate a simple icon (we embed a 256x256 PNG from the binary if possible)
-# For now, use a placeholder: convert the logo.ico if available, or skip
-ICON_DIR="$DEB_ROOT/usr/share/icons/hicolor/256x256/apps"
-mkdir -p "$ICON_DIR"
-# Try to generate a PNG from the .ico via ImageMagick, otherwise skip icon
-if command -v convert &>/dev/null; then
-    if [ -f "$SCRIPT_DIR/../logo.ico" ]; then
-        convert "$SCRIPT_DIR/../logo.ico" -resize 256x256 "$ICON_DIR/serial-debug.png" 2>/dev/null || true
-    fi
-fi
-# If icon not generated, create a minimal SVG icon
-if [ ! -f "$ICON_DIR/serial-debug.png" ]; then
-    # Create a simple SVG icon for the desktop entry
-    mkdir -p "$DEB_ROOT/usr/share/icons/hicolor/scalable/apps"
-    cat > "$DEB_ROOT/usr/share/icons/hicolor/scalable/apps/serial-debug.svg" << 'SVGEOF'
+# Create a scalable SVG icon (no ImageMagick needed)
+mkdir -p "$DEB_ROOT/usr/share/icons/hicolor/scalable/apps"
+cat > "$DEB_ROOT/usr/share/icons/hicolor/scalable/apps/serial-debug.svg" << 'SVGEOF'
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
   <rect width="256" height="256" rx="32" fill="#1a1b26"/>
   <g transform="translate(128,128)" fill="none" stroke="#7aa2f7" stroke-width="8" stroke-linecap="round">
@@ -78,16 +67,15 @@ if [ ! -f "$ICON_DIR/serial-debug.png" ]; then
   </g>
 </svg>
 SVGEOF
-fi
 
 # Copy doc
 cp "$SCRIPT_DIR/../README.md" "$DEB_ROOT/usr/share/doc/serial-debug/README" 2>/dev/null || true
 
-# Build the .deb
-fakeroot dpkg-deb --build "$DEB_ROOT" "$DEB_FILE" 2>/dev/null || \
-  dpkg-deb --build "$DEB_ROOT" "$DEB_FILE"
+# Build the .deb (dpkg-deb works without root for building)
+dpkg-deb --build "$DEB_ROOT" "$DEB_FILE"
 
-echo "✅ .deb created: ${DEB_FILE}"
-echo "   Size: $(du -h "$DEB_FILE" | cut -f1)"
-echo "   Contents:"
+echo "=== .deb created: ${DEB_FILE} ==="
+echo "Size: $(du -h "$DEB_FILE" | cut -f1)"
+echo ""
+echo "Contents:"
 dpkg --contents "$DEB_FILE" 2>/dev/null | head -30 || true
