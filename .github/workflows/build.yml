@@ -387,6 +387,13 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -e
+
+          # Delete existing release if any (from previous failed run)
+          gh release delete ${{ github.ref_name }} --yes 2>/dev/null || true
+
+          # Delete existing tag if any (from previous failed run)
+          git push origin :refs/tags/${{ github.ref_name }} 2>/dev/null || true
+
           NOTES="## Serial Debug Assistant v${{ env.APP_VERSION }}
 
           ### 新增功能 / New Features
@@ -413,16 +420,17 @@ jobs:
           ### 完整变更 / Full Changelog
           ${{ github.event.head_commit.message || 'See commits for details' }}"
 
-          # Find all artifacts
-          FILES=$(find . -type f \( -name '*.tar.gz' -o -name '*.zip' -o -name '*.deb' -o -name '*.AppImage' \) 2>/dev/null || true)
+          # Step 1: Create release (without assets to avoid race condition)
+          echo "=== Creating release ==="
+          gh release create ${{ github.ref_name }} \
+            --title "Release ${{ github.ref_name }}" \
+            --notes "$NOTES"
 
-          if [ -n "$FILES" ]; then
-            gh release create ${{ github.ref_name }} \
-              --title "Release ${{ github.ref_name }}" \
-              --notes "$NOTES" \
-              $FILES
-          else
-            gh release create ${{ github.ref_name }} \
-              --title "Release ${{ github.ref_name }}" \
-              --notes "$NOTES"
-          fi
+          # Step 2: Upload assets one by one
+          echo "=== Uploading assets ==="
+          find . -type f \( -name '*.tar.gz' -o -name '*.zip' -o -name '*.deb' -o -name '*.AppImage' \) 2>/dev/null | while read -r file; do
+            echo "  Uploading: $file"
+            gh release upload ${{ github.ref_name }} "$file" --clobber
+            echo "  Done: $file"
+          done
+          echo "=== Release complete ==="
