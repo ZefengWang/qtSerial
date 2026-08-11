@@ -34,11 +34,21 @@ jobs:
             build_deb: 'true'
             build_appimage: 'true'
             build_tarball: 'false'
-          # Ubuntu 24.04 - 系统 Qt6：.deb + tarball（兼容 Ubuntu 26.04）
+          # Ubuntu 24.04 - 系统 Qt6：.deb + tarball
           - runner: ubuntu-24.04
             qt_major: '6'
             label: 'Linux 24.04 (Qt6, deb+tarball)'
             artifact_suffix: 'Linux-ubuntu2404-qt6-x86_64'
+            qmake_cmd: 'qmake6'
+            qt_dev_pkgs: 'qt6-base-dev qt6-qmake qttools6-dev-tools libqt6serialport6-dev'
+            build_deb: 'true'
+            build_appimage: 'false'
+            build_tarball: 'true'
+          # Ubuntu 26.04 - 系统 Qt6：.deb + tarball
+          - runner: ubuntu-26.04
+            qt_major: '6'
+            label: 'Linux 26.04 (Qt6, deb+tarball)'
+            artifact_suffix: 'Linux-ubuntu2604-qt6-x86_64'
             qmake_cmd: 'qmake6'
             qt_dev_pkgs: 'qt6-base-dev qt6-qmake qttools6-dev-tools libqt6serialport6-dev'
             build_deb: 'true'
@@ -51,6 +61,10 @@ jobs:
 
       - name: Install system dependencies (X11 + Wayland)
         run: |
+          # GitHub runner 预装的 Microsoft/Azure 源偶尔返回 403，导致 apt-get update 失败，
+          # 先移除这些失效源，再用官方源更新。
+          sudo rm -f /etc/apt/sources.list.d/microsoft-prod.list \
+                     /etc/apt/sources.list.d/azure-cli.list 2>/dev/null || true
           sudo apt-get update
           sudo apt-get install -y \
             build-essential \
@@ -75,7 +89,7 @@ jobs:
 
       - name: Install system Qt${{ matrix.qt_major }} (apt)
         run: |
-          sudo apt-get update
+          # 上一步已清理失效源并运行过 apt-get update，这里直接安装即可
           sudo apt-get install -y ${{ matrix.qt_dev_pkgs }}
 
       - name: Configure project
@@ -107,7 +121,7 @@ jobs:
             ${{ matrix.qt_major }}
           # 重命名 deb，使其包含平台后缀，避免多个平台同名覆盖
           for f in deploy/*.deb; do
-            mv "$f" "deploy/${APP_NAME}_${APP_VERSION}_${matrix.artifact_suffix}.deb"
+            mv "$f" "deploy/${APP_NAME}_${APP_VERSION}_${{ matrix.artifact_suffix }}.deb"
           done
           ls -lh deploy/*.deb
 
@@ -325,7 +339,8 @@ jobs:
           ### 下载说明 / Download
           - **deb 包**：直接下载 .deb 文件（无需解压 zip）。
             - \`SerialDebug_2.0.1_Linux-ubuntu2204-qt5-x86_64.deb\`（Qt5）
-            - \`SerialDebug_2.0.1_Linux-ubuntu2404-qt6-x86_64.deb\`（Qt6，兼容 Ubuntu 26.04）
+            - \`SerialDebug_2.0.1_Linux-ubuntu2404-qt6-x86_64.deb\`（Qt6）
+            - \`SerialDebug_2.0.1_Linux-ubuntu2604-qt6-x86_64.deb\`（Qt6，Ubuntu 26.04 原生）
           - **不要从 Actions 的 Artifacts 下载**——那里会把文件打成 zip。请从本 Release 的 Assets 直接下载原始 .deb。
           - **AppImage**：下载后 chmod +x 直接运行，无需安装。
           - **Windows**：解压 zip 后运行 SerialDebug.exe。
