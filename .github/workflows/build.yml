@@ -376,13 +376,46 @@ jobs:
         uses: actions/download-artifact@v5
 
       - name: Create Release
-        uses: softprops/action-gh-release@v2
-        with:
-          name: Release ${{ github.ref_name }}
-          generate_release_notes: true
-          files: |
-            */*.tar.gz
-            */*.zip
-            */*.deb
-            */*.AppImage
-          fail_on_unmatched_files: false
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -e
+          NOTES="## Serial Debug Assistant v${{ env.APP_VERSION }}
+
+          ### 新增功能 / New Features
+          - 现代 UI 重设计，卡片式布局，暗色/亮色/Ubuntu 三套主题
+          - Modern UI redesign with card-based layout, dark/light/Ubuntu themes
+          - 多语言框架（中文/英文），支持菜单切换
+          - Multi-language framework (Chinese/English) with menu switching
+          - 模态对话框 & 居中显示
+          - Modal dialogs with proper centering
+
+          ### 打包格式 / Package Formats
+          | 平台 | 包类型 |
+          |------|--------|
+          | Ubuntu 22.04 | .deb + AppImage（最便携 glibc） |
+          | Ubuntu 24.04 | .deb |
+          | Ubuntu 26.04 | .deb + tarball |
+          | Windows | .zip |
+
+          ### 安装说明 / Installation
+          - **deb**: 会自动安装 Qt 依赖和 udev 规则，将用户加入 dialout 组
+          - **AppImage**: 下载后 chmod +x 直接运行，无需安装
+          - **Windows**: 解压后直接运行 SerialDebug.exe
+
+          ### 完整变更 / Full Changelog
+          ${{ github.event.head_commit.message || 'See commits for details' }}"
+
+          # Find all artifacts
+          FILES=$(find . -type f \( -name '*.tar.gz' -o -name '*.zip' -o -name '*.deb' -o -name '*.AppImage' \) 2>/dev/null || true)
+
+          if [ -n "$FILES" ]; then
+            gh release create ${{ github.ref_name }} \
+              --title "Release ${{ github.ref_name }}" \
+              --notes "$NOTES" \
+              $FILES
+          else
+            gh release create ${{ github.ref_name }} \
+              --title "Release ${{ github.ref_name }}" \
+              --notes "$NOTES"
+          fi
