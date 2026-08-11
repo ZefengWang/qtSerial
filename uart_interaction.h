@@ -2,6 +2,8 @@
 #define SERIAL_H
 
 #include <QMainWindow>
+#include <QTimer>
+#include <QDateTime>
 #include "uart_core.h"
 #include "qserialport.h"
 
@@ -25,19 +27,26 @@ private slots:
   void on_sendButton_clicked();
   void readSerialData();
   void on_clearTextButton_clicked();
-  void on_actionExit_triggered();
-  void on_openPortButton_3_clicked();
+  void on_clearRecvButton_clicked();
+  void on_advancedSettingsBtn_clicked();
   void on_portComboBox_activated(const QString &arg1);
+  void on_timerCheckBox_stateChanged(int state);
+  void on_saveLogButton_clicked();
+  void timerSendData();
 
 private:
-  void show_text(const QString &text);
-  void status_bar_initialization();
+  void loadStyleSheet();
+  void setupConnections();
+  void refreshPortList();
+  void updateConnectionStatus(bool connected);
+  void appendReceiveData(const QString &text);
+  void formatHexDisplay(QByteArray &data);
+  QString formatByteCount(qint64 bytes);
+
 private:
   Ui::serial *ui;
   Uartcore *uart_core_;
-  QLabel* rx_display_;
-  QLabel* tx_display_;
-  QLabel* connect_display_;
+  QTimer *send_timer_;
   qint64 rx_quantity_ = 0;
   qint64 tx_quantity_ = 0;
   bool is_the_serial_port_open_ = false;

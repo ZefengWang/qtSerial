@@ -17,6 +17,9 @@ public:
     void find_available_serial_ports_and_add(Uartcore* m_serial_);
     ~setting();
 
+protected:
+    void accept() override;
+
 private slots:
     void on_buttonBox_accepted();
 

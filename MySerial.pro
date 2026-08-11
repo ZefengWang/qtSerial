@@ -1,6 +1,7 @@
 #-------------------------------------------------
 #
-# Project created by QtCreator 2022-01-20T22:04:57
+# Project: Serial Debug Assistant (Modern UI)
+# Version: 2.0
 #
 #-------------------------------------------------
 
@@ -8,12 +9,15 @@ QT       += core gui serialport
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
-CONFIG += c++11
-TARGET = MySerial
+CONFIG += c++17
+TARGET = SerialDebug
 TEMPLATE = app
 
+# Version definition
+DEFINES += APP_VERSION=\\\"2.0\\\"
 
-SOURCES += main.cpp\
+SOURCES += \
+    main.cpp \
     user_interaction.cpp \
     uart_setting.cpp \
     uart_core.cpp
@@ -31,7 +35,8 @@ TRANSLATIONS += \
     MySerial_zh_CN.ts
 
 DISTFILES += \
-        MySerial_zh_CN.qm
+    MySerial_zh_CN.qm \
+    styles/dark.qss
 
 RC_FILE = logo.rc
 
