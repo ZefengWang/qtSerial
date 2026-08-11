@@ -31,7 +31,7 @@ jobs:
             artifact_suffix: 'Linux-ubuntu2204-qt5-x86_64'
             qmake_cmd: 'qmake'
             lrelease_cmd: 'lrelease'
-            qt_dev_pkgs: 'qtbase5-dev qttools5-dev-tools libqt5serialport5-dev qtchooser'
+            qt_base_pkgs: 'qtbase5-dev qttools5-dev-tools libqt5serialport5-dev qtchooser'
             build_deb: 'true'
             build_appimage: 'true'
             build_tarball: 'false'
@@ -41,8 +41,8 @@ jobs:
             label: 'Linux 24.04 (Qt6, deb+tarball)'
             artifact_suffix: 'Linux-ubuntu2404-qt6-x86_64'
             qmake_cmd: 'qmake6'
-            lrelease_cmd: 'lrelease6'
-            qt_dev_pkgs: 'qt6-base-dev qt6-l10n-tools libqt6serialport6-dev'
+            lrelease_cmd: '/usr/lib/qt6/bin/lrelease'
+            qt_base_pkgs: 'qt6-base-dev qt6-l10n-tools'
             build_deb: 'true'
             build_appimage: 'false'
             build_tarball: 'true'
@@ -52,8 +52,8 @@ jobs:
             label: 'Linux 26.04 (Qt6, deb+tarball)'
             artifact_suffix: 'Linux-ubuntu2604-qt6-x86_64'
             qmake_cmd: 'qmake6'
-            lrelease_cmd: 'lrelease6'
-            qt_dev_pkgs: 'qt6-base-dev qt6-l10n-tools libqt6serialport6-dev'
+            lrelease_cmd: '/usr/lib/qt6/bin/lrelease'
+            qt_base_pkgs: 'qt6-base-dev qt6-l10n-tools'
             build_deb: 'true'
             build_appimage: 'false'
             build_tarball: 'true'
@@ -92,8 +92,18 @@ jobs:
 
       - name: Install system Qt${{ matrix.qt_major }} (apt)
         run: |
-          # 上一步已清理失效源并运行过 apt-get update，这里直接安装即可
-          sudo apt-get install -y ${{ matrix.qt_dev_pkgs }}
+          # 上一步已清理失效源并运行过 apt-get update，这里直接安装即可。
+          # serialport 开发包在两个 Ubuntu 上命名不同：
+          #   - 24.04 及更早：libqt6serialport6-dev
+          #   - 26.04 及更新：qt6-serialport-dev（旧名已被替换）
+          # 因此先装基础包，再分别尝试两种 serialport 包名，保证任一版本都能装上。
+          sudo apt-get install -y ${{ matrix.qt_base_pkgs }}
+          sudo apt-get install -y qt6-serialport-dev 2>/dev/null \
+            || sudo apt-get install -y libqt6serialport6-dev 2>/dev/null \
+            || sudo apt-get install -y libqt5serialport5-dev
+          # 确认 qmake 与 lrelease 可用
+          ${{ matrix.qmake_cmd }} -v
+          ls /usr/lib/qt6/bin/ 2>/dev/null | grep -E 'lrelease|lupdate' || true
 
       - name: Configure project
         run: |
