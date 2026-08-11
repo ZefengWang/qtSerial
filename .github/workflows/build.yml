@@ -30,6 +30,7 @@ jobs:
             label: 'Linux 22.04 (Qt5, deb+AppImage)'
             artifact_suffix: 'Linux-ubuntu2204-qt5-x86_64'
             qmake_cmd: 'qmake'
+            lrelease_cmd: 'lrelease'
             qt_dev_pkgs: 'qtbase5-dev qttools5-dev-tools libqt5serialport5-dev qtchooser'
             build_deb: 'true'
             build_appimage: 'true'
@@ -40,7 +41,8 @@ jobs:
             label: 'Linux 24.04 (Qt6, deb+tarball)'
             artifact_suffix: 'Linux-ubuntu2404-qt6-x86_64'
             qmake_cmd: 'qmake6'
-            qt_dev_pkgs: 'qt6-base-dev qt6-qmake qttools6-dev-tools libqt6serialport6-dev'
+            lrelease_cmd: 'lrelease6'
+            qt_dev_pkgs: 'qt6-base-dev qt6-l10n-tools libqt6serialport6-dev'
             build_deb: 'true'
             build_appimage: 'false'
             build_tarball: 'true'
@@ -50,7 +52,8 @@ jobs:
             label: 'Linux 26.04 (Qt6, deb+tarball)'
             artifact_suffix: 'Linux-ubuntu2604-qt6-x86_64'
             qmake_cmd: 'qmake6'
-            qt_dev_pkgs: 'qt6-base-dev qt6-qmake qttools6-dev-tools libqt6serialport6-dev'
+            lrelease_cmd: 'lrelease6'
+            qt_dev_pkgs: 'qt6-base-dev qt6-l10n-tools libqt6serialport6-dev'
             build_deb: 'true'
             build_appimage: 'false'
             build_tarball: 'true'
@@ -106,7 +109,7 @@ jobs:
       - name: Compile translations (lrelease)
         run: |
           cd build
-          lrelease ../MySerial_zh_CN.ts -qm MySerial_zh_CN.qm
+          ${{ matrix.lrelease_cmd }} ../MySerial_zh_CN.ts -qm MySerial_zh_CN.qm
           ls -la MySerial_zh_CN.qm
 
       - name: Build .deb package
