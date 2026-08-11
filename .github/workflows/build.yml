@@ -98,7 +98,7 @@ jobs:
           mkdir -p build
           cd build
           if [ "${{ matrix.qt_source }}" = "aqt" ]; then
-            export PATH="$Qt6_DIR/bin:$PATH"
+            export PATH="${Qt6_DIR:-${QT_ROOT_DIR}}/bin:$PATH"
           fi
           ${{ matrix.qmake_cmd }} ../MySerial.pro CONFIG+=Release
 
@@ -106,7 +106,7 @@ jobs:
         run: |
           cd build
           if [ "${{ matrix.qt_source }}" = "aqt" ]; then
-            export PATH="$Qt6_DIR/bin:$PATH"
+            export PATH="${Qt6_DIR:-${QT_ROOT_DIR}}/bin:$PATH"
           fi
           make -j$(nproc)
 
@@ -120,17 +120,20 @@ jobs:
           cp ${{ env.APP_NAME }} "$APP_DIR/"
 
           # --- Determine Qt directories ---
+          # install-qt-action v4 sets QT_ROOT_DIR and QT_PLUGIN_PATH (not Qt6_DIR)
           if [ "${{ matrix.qt_source }}" = "aqt" ]; then
-            export LD_LIBRARY_PATH="$Qt6_DIR/lib:$LD_LIBRARY_PATH"
-            QT_PLUGINS_DIR="$Qt6_DIR/plugins"
-            QT_LIB_DIR="$Qt6_DIR/lib"
+            QT_ROOT="${Qt6_DIR:-${QT_ROOT_DIR:-}}"
+            QT_LIB_DIR="${QT_ROOT}/lib"
+            QT_PLUGINS_DIR="${QT_PLUGIN_PATH:-${QT_ROOT}/plugins}"
+            export LD_LIBRARY_PATH="${QT_LIB_DIR}:${LD_LIBRARY_PATH}"
           else
             QT_LIB_DIR=$(qmake -query QT_INSTALL_LIBS 2>/dev/null || echo "/usr/lib/x86_64-linux-gnu")
             QT_PLUGINS_DIR=$(qmake -query QT_INSTALL_PLUGINS 2>/dev/null || echo "/usr/lib/x86_64-linux-gnu/qt5/plugins")
-            export LD_LIBRARY_PATH="$QT_LIB_DIR:$LD_LIBRARY_PATH"
+            export LD_LIBRARY_PATH="${QT_LIB_DIR}:${LD_LIBRARY_PATH}"
           fi
           echo "Qt lib dir:      $QT_LIB_DIR"
           echo "Qt plugins dir:  $QT_PLUGINS_DIR"
+          echo "Plugins exists:  $([ -d "$QT_PLUGINS_DIR" ] && echo 'yes' || echo 'NO - will try alternatives')"
 
           # --- Collect all shared library dependencies ---
           # Function: copy a .so to lib/ unless it's a basic system library
