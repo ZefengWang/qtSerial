@@ -46,7 +46,8 @@ TRANSLATIONS += \
 DISTFILES += \
     MySerial_zh_CN.qm \
     styles/dark.qss \
-    styles/light.qss
+    styles/light.qss \
+    styles/ubuntu.qss
 
 RC_FILE = logo.rc
 

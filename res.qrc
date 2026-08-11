@@ -1,7 +1,8 @@
 <RCC>
     <qresource prefix="/">
         <file alias="logo">logo.ico</file>
-        <file alias="dark_style">styles/dark.qss</file>
-        <file alias="light_style">styles/light.qss</file>
+        <file>styles/dark.qss</file>
+        <file>styles/light.qss</file>
+        <file>styles/ubuntu.qss</file>
     </qresource>
 </RCC>

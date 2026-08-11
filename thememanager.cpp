@@ -14,7 +14,7 @@ ThemeManager::ThemeManager()
     : m_currentTheme("dark")
 {
     // Register available themes
-    m_themes << "dark" << "light";
+    m_themes << "dark" << "light" << "ubuntu";
 }
 
 QStringList ThemeManager::availableThemes() const
@@ -30,8 +30,9 @@ QString ThemeManager::currentTheme() const
 QString ThemeManager::themeDisplayName(const QString &themeName) const
 {
     static QMap<QString, QString> displayNames = {
-        {"dark",  "Dark"},
-        {"light", "Light"},
+        {"dark",   "Dark"},
+        {"light",  "Light"},
+        {"ubuntu", "Ubuntu"},
     };
     return displayNames.value(themeName, themeName);
 }
