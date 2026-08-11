@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
 
 env:
-  QT_VERSION: '6.5.*'
+  QT_VERSION: '6.7.*'
   APP_NAME: SerialDebug
   APP_VERSION: '2.0.0'
 
@@ -33,16 +33,17 @@ jobs:
           host: 'linux'
           target: 'desktop'
           arch: 'gcc_64'
-          modules: 'qtserialport qtwayland'
+          modules: 'qtserialport'
           dir: '${{ github.workspace }}'
 
-      - name: Install system dependencies
+      - name: Install system dependencies (X11 + Wayland)
         run: |
           sudo apt-get update
           sudo apt-get install -y \
             build-essential \
             libgl1-mesa-dev \
             libxkbcommon-x11-0 \
+            libxkbcommon-dev \
             libwayland-dev \
             wayland-protocols \
             libx11-xcb-dev \
@@ -56,8 +57,7 @@ jobs:
             libxcb-sync-dev \
             libxcb-xfixes0-dev \
             libxcb-xinerama0-dev \
-            libxcb-xkb-dev \
-            libxkbcommon-dev
+            libxcb-xkb-dev
 
       - name: Configure project
         run: |
@@ -70,61 +70,52 @@ jobs:
           cd build
           make -j$(nproc)
 
-      - name: Deploy (create AppDir with linuxdeployqt)
+      - name: Deploy Qt libraries (X11 + Wayland)
         run: |
           cd build
-          # Create deployment directory
           mkdir -p deploy/${{ env.APP_NAME }}
           cp ${{ env.APP_NAME }} deploy/${{ env.APP_NAME }}/
-          
-          # Copy Qt plugins for X11 + Wayland
-          mkdir -p deploy/${{ env.APP_NAME }}/plugins/platforms
-          cp -r $Qt6_DIR/plugins/platforms/libqxcb.so deploy/${{ env.APP_NAME }}/plugins/platforms/
-          cp -r $Qt6_DIR/plugins/platforms/libqwayland-generic.so deploy/${{ env.APP_NAME }}/plugins/platforms/ 2>/dev/null || true
-          cp -r $Qt6_DIR/plugins/platforms/libqwayland-egl.so deploy/${{ env.APP_NAME }}/plugins/platforms/ 2>/dev/null || true
-          
-          # Copy other required plugins
-          mkdir -p deploy/${{ env.APP_NAME }}/plugins/wayland-decoration-client
-          mkdir -p deploy/${{ env.APP_NAME }}/plugins/wayland-graphics-integration-client
-          mkdir -p deploy/${{ env.APP_NAME }}/plugins/wayland-shell-integration
-          cp -r $Qt6_DIR/plugins/wayland-decoration-client/*.so deploy/${{ env.APP_NAME }}/plugins/wayland-decoration-client/ 2>/dev/null || true
-          cp -r $Qt6_DIR/plugins/wayland-graphics-integration-client/*.so deploy/${{ env.APP_NAME }}/plugins/wayland-graphics-integration-client/ 2>/dev/null || true
-          cp -r $Qt6_DIR/plugins/wayland-shell-integration/*.so deploy/${{ env.APP_NAME }}/plugins/wayland-shell-integration/ 2>/dev/null || true
 
-      - name: Create AppImage
-        run: |
-          cd build
-          # Download linuxdeployqt
-          wget -q https://github.com/probonopd/linuxdeployqt/releases/download/continuous/linuxdeployqt-continuous-x86_64.AppImage
-          chmod +x linuxdeployqt-continuous-x86_64.AppImage
-          
-          # Create AppDir structure
-          mkdir -p AppDir/usr/bin
-          cp deploy/${{ env.APP_NAME }}/${{ env.APP_NAME }} AppDir/usr/bin/
-          
-          # Create desktop file
-          cat > AppDir/${{ env.APP_NAME }}.desktop << 'EOF'
-          [Desktop Entry]
-          Type=Application
-          Name=Serial Debug Assistant
-          Comment=Modern serial port debugging tool
-          Exec=SerialDebug
-          Icon=logo
-          Categories=Development;Utility;
-          EOF
-          
-          # Copy icon
-          cp ../logo.ico AppDir/logo.ico 2>/dev/null || true
-          
-          # Run linuxdeployqt
-          ./linuxdeployqt-continuous-x86_64.AppImage AppDir/${{ env.APP_NAME }}.desktop \
-            -appimage \
-            -no-translations \
-            -qmake=$Qt6_DIR/bin/qmake \
-            || true  # linuxdeployqt may fail on newer systems but still produce valid AppImage
-          
-          # Check if AppImage was created
-          ls -la *.AppImage 2>/dev/null || echo "AppImage creation may have failed, using raw binary"
+          # Run windeployqt equivalent for Linux
+          # Copy Qt platforms plugins (X11 + Wayland)
+          mkdir -p deploy/${{ env.APP_NAME }}/plugins/platforms
+          # X11 platform plugin
+          cp $Qt6_DIR/plugins/platforms/libqxcb.so deploy/${{ env.APP_NAME }}/plugins/platforms/ 2>/dev/null || true
+          # Wayland platform plugins (included in base Qt6 on Linux)
+          cp $Qt6_DIR/plugins/platforms/libqwayland-generic.so deploy/${{ env.APP_NAME }}/plugins/platforms/ 2>/dev/null || true
+          cp $Qt6_DIR/plugins/platforms/libqwayland-egl.so deploy/${{ env.APP_NAME }}/plugins/platforms/ 2>/dev/null || true
+
+          # Copy Wayland integration plugins
+          for dir in wayland-decoration-client wayland-graphics-integration-client wayland-shell-integration; do
+            if [ -d "$Qt6_DIR/plugins/$dir" ]; then
+              mkdir -p "deploy/${{ env.APP_NAME }}/plugins/$dir"
+              cp $Qt6_DIR/plugins/$dir/*.so "deploy/${{ env.APP_NAME }}/plugins/$dir/" 2>/dev/null || true
+            fi
+          done
+
+          # Copy Qt libraries
+          linuxdeployqt_path=""
+          # Try to use qt_deploy tool
+          $Qt6_DIR/bin/qmake -query QT_INSTALL_LIBS | xargs -I{} cp -r {} "deploy/${{ env.APP_NAME }}/" 2>/dev/null || true
+
+          # Create startup script
+          cat > deploy/${{ env.APP_NAME }}/run.sh << 'SCRIPT'
+          #!/bin/bash
+          DIR="$(cd "$(dirname "$0")" && pwd)"
+          export QT_PLUGIN_PATH="$DIR/plugins"
+          export LD_LIBRARY_PATH="$DIR:$LD_LIBRARY_PATH"
+          # Support both X11 and Wayland
+          if [ -n "$WAYLAND_DISPLAY" ]; then
+            export QT_QPA_PLATFORM=wayland
+          else
+            export QT_QPA_PLATFORM=xcb
+          fi
+          exec "$DIR/SerialDebug" "$@"
+          SCRIPT
+          chmod +x deploy/${{ env.APP_NAME }}/run.sh
+
+          echo "=== Deployed files ==="
+          find deploy/ -type f | head -30
 
       - name: Package tarball
         run: |
@@ -135,10 +126,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ env.APP_NAME }}-Linux-x86_64
-          path: |
-            build/${{ env.APP_NAME }}-Linux-x86_64.tar.gz
-            build/${{ env.APP_NAME }}-x86_64.AppImage
-          if-no-files-found: warn
+          path: build/${{ env.APP_NAME }}-Linux-x86_64.tar.gz
 
   # ===================== Windows Build =====================
   windows-build:
@@ -217,5 +205,4 @@ jobs:
           files: |
             */*.tar.gz
             */*.zip
-            */*.AppImage
           fail_on_unmatched_files: false
