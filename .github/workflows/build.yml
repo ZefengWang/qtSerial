@@ -21,50 +21,34 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # Ubuntu 26.04 with Qt6
+          # Ubuntu 26.04 with Qt6 (via aqtinstall)
           - runner: ubuntu-26.04
-            qt_version: '6.8.*'
-            qt_host: 'linux'
-            qt_arch: 'gcc_64'
-            qt_modules: 'qtserialport'
+            qt_major: '6'
+            qt_source: 'aqt'
+            qt_version: '6.5.3'
             label: 'Linux 26.04 (Qt6, x86_64)'
-            artifact_suffix: 'Linux-ubuntu2604-x86_64'
+            artifact_suffix: 'Linux-ubuntu2604-qt6-x86_64'
             qmake_cmd: 'qmake6'
-            cxx_standard: 'c++17'
-          # Ubuntu 24.04 with Qt5
+          # Ubuntu 24.04 with Qt5 (via system packages)
           - runner: ubuntu-24.04
-            qt_version: '5.15.*'
-            qt_host: 'linux'
-            qt_arch: 'gcc_64'
-            qt_modules: 'qtserialport'
+            qt_major: '5'
+            qt_source: 'system'
+            qt_version: ''
             label: 'Linux 24.04 (Qt5, x86_64)'
-            artifact_suffix: 'Linux-ubuntu2404-x86_64'
+            artifact_suffix: 'Linux-ubuntu2404-qt5-x86_64'
             qmake_cmd: 'qmake'
-            cxx_standard: 'c++11'
-          # Ubuntu 22.04 with Qt5
+          # Ubuntu 22.04 with Qt5 (via system packages)
           - runner: ubuntu-22.04
-            qt_version: '5.15.*'
-            qt_host: 'linux'
-            qt_arch: 'gcc_64'
-            qt_modules: 'qtserialport'
+            qt_major: '5'
+            qt_source: 'system'
+            qt_version: ''
             label: 'Linux 22.04 (Qt5, x86_64)'
-            artifact_suffix: 'Linux-ubuntu2204-x86_64'
+            artifact_suffix: 'Linux-ubuntu2204-qt5-x86_64'
             qmake_cmd: 'qmake'
-            cxx_standard: 'c++11'
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
-      - name: Install Qt
-        uses: jurplel/install-qt-action@v4
-        with:
-          version: ${{ matrix.qt_version }}
-          host: ${{ matrix.qt_host }}
-          target: 'desktop'
-          arch: ${{ matrix.qt_arch }}
-          modules: ${{ matrix.qt_modules }}
-          dir: '${{ github.workspace }}'
 
       - name: Install system dependencies (X11 + Wayland)
         run: |
@@ -89,15 +73,40 @@ jobs:
             libxcb-xinerama0-dev \
             libxcb-xkb-dev
 
+      - name: Install Qt5 (system packages)
+        if: matrix.qt_source == 'system'
+        run: |
+          sudo apt-get install -y \
+            qtbase5-dev \
+            libqt5serialport5-dev \
+            qtchooser
+
+      - name: Install Qt6 (aqtinstall)
+        if: matrix.qt_source == 'aqt'
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: ${{ matrix.qt_version }}
+          host: 'linux'
+          target: 'desktop'
+          arch: 'gcc_64'
+          modules: 'qtserialport'
+          dir: '${{ github.workspace }}'
+
       - name: Configure project
         run: |
           mkdir -p build
           cd build
+          if [ "${{ matrix.qt_source }}" = "aqt" ]; then
+            export PATH="$Qt6_DIR/bin:$PATH"
+          fi
           ${{ matrix.qmake_cmd }} ../MySerial.pro CONFIG+=Release
 
       - name: Build
         run: |
           cd build
+          if [ "${{ matrix.qt_source }}" = "aqt" ]; then
+            export PATH="$Qt6_DIR/bin:$PATH"
+          fi
           make -j$(nproc)
 
       - name: Deploy Qt libraries (X11 + Wayland)
@@ -107,24 +116,27 @@ jobs:
           cp ${{ env.APP_NAME }} deploy/${{ env.APP_NAME }}/
 
           # Determine Qt plugins directory
-          QT_DIR="$Qt6_DIR"
-          if [ -z "$QT_DIR" ]; then
-            QT_DIR="$Qt5_DIR"
+          QT_PLUGINS_DIR=""
+          if [ "${{ matrix.qt_source }}" = "aqt" ]; then
+            # aqtinstall: Qt6_DIR is the Qt root (e.g. .../6.5.3/gcc_64), plugins are under .../plugins/
+            QT_PLUGINS_DIR="$Qt6_DIR/plugins"
+          else
+            # System Qt5: qmake -query QT_INSTALL_PLUGINS returns the plugins dir directly
+            QT_PLUGINS_DIR=$(qmake -query QT_INSTALL_PLUGINS 2>/dev/null || echo "/usr/lib/x86_64-linux-gnu/qt5/plugins")
           fi
+          echo "Qt plugins dir: $QT_PLUGINS_DIR"
 
           # Copy Qt platforms plugins (X11 + Wayland)
           mkdir -p deploy/${{ env.APP_NAME }}/plugins/platforms
-          # X11 platform plugin
-          cp $QT_DIR/plugins/platforms/libqxcb.so deploy/${{ env.APP_NAME }}/plugins/platforms/ 2>/dev/null || true
-          # Wayland platform plugins
-          cp $QT_DIR/plugins/platforms/libqwayland-generic.so deploy/${{ env.APP_NAME }}/plugins/platforms/ 2>/dev/null || true
-          cp $QT_DIR/plugins/platforms/libqwayland-egl.so deploy/${{ env.APP_NAME }}/plugins/platforms/ 2>/dev/null || true
+          cp $QT_PLUGINS_DIR/platforms/libqxcb.so deploy/${{ env.APP_NAME }}/plugins/platforms/ 2>/dev/null || true
+          cp $QT_PLUGINS_DIR/platforms/libqwayland-generic.so deploy/${{ env.APP_NAME }}/plugins/platforms/ 2>/dev/null || true
+          cp $QT_PLUGINS_DIR/platforms/libqwayland-egl.so deploy/${{ env.APP_NAME }}/plugins/platforms/ 2>/dev/null || true
 
           # Copy Wayland integration plugins
           for dir in wayland-decoration-client wayland-graphics-integration-client wayland-shell-integration; do
-            if [ -d "$QT_DIR/plugins/$dir" ]; then
+            if [ -d "$QT_PLUGINS_DIR/$dir" ]; then
               mkdir -p "deploy/${{ env.APP_NAME }}/plugins/$dir"
-              cp $QT_DIR/plugins/$dir/*.so "deploy/${{ env.APP_NAME }}/plugins/$dir/" 2>/dev/null || true
+              cp $QT_PLUGINS_DIR/$dir/*.so "deploy/${{ env.APP_NAME }}/plugins/$dir/" 2>/dev/null || true
             fi
           done
 
@@ -158,7 +170,7 @@ jobs:
       - name: Install Qt6
         uses: jurplel/install-qt-action@v4
         with:
-          version: '6.8.*'
+          version: '6.5.3'
           host: 'windows'
           target: 'desktop'
           arch: 'win64_msvc2019_64'
