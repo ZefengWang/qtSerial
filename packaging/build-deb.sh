@@ -34,11 +34,31 @@ fi
 rm -rf "$DEB_ROOT"
 mkdir -p "$DEB_ROOT"
 
-# Copy DEBIAN control files (with version/arch substituted)
+# ============================================================
+# RULE: control file must have trailing newline and required fields
+# ============================================================
 mkdir -p "$DEB_ROOT/DEBIAN"
 cp "$SCRIPT_DIR/deb/DEBIAN/${CONTROL_SRC}" "$DEB_ROOT/DEBIAN/control"
-sed -i "s/Version: 2.0.0/Version: ${VERSION}/" "$DEB_ROOT/DEBIAN/control"
-sed -i "s/Architecture: amd64/Architecture: ${ARCH}/" "$DEB_ROOT/DEBIAN/control"
+
+# RULE-1: Ensure control file ends with a newline (dpkg-deb rejects files without final newline)
+#   Use sed to add a trailing newline if the file doesn't end with one.
+tail -c1 "$DEB_ROOT/DEBIAN/control" | read -r _ || echo >> "$DEB_ROOT/DEBIAN/control"
+
+# RULE-2: Ensure Version field exists and is substituted
+#   If the control file doesn't have a Version: 2.0.0 placeholder, add it after Package.
+if grep -q '^Version:' "$DEB_ROOT/DEBIAN/control"; then
+    sed -i "s/^Version:.*/Version: ${VERSION}/" "$DEB_ROOT/DEBIAN/control"
+else
+    sed -i "/^Package:/a Version: ${VERSION}" "$DEB_ROOT/DEBIAN/control"
+fi
+
+# RULE-3: Ensure Architecture field exists and is substituted
+if grep -q '^Architecture:' "$DEB_ROOT/DEBIAN/control"; then
+    sed -i "s/^Architecture:.*/Architecture: ${ARCH}/" "$DEB_ROOT/DEBIAN/control"
+else
+    sed -i "/^Version:/a Architecture: ${ARCH}" "$DEB_ROOT/DEBIAN/control"
+fi
+
 # Copy postinst
 cp "$SCRIPT_DIR/deb/DEBIAN/postinst" "$DEB_ROOT/DEBIAN/"
 chmod 755 "$DEB_ROOT/DEBIAN/postinst"
