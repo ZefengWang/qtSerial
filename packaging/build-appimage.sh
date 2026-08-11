@@ -35,15 +35,41 @@ chmod 755 "$APP_DIR/usr/bin/SerialDebug"
 cp "$SCRIPT_DIR/deb/usr/share/applications/serial-debug.desktop" \
    "$APP_DIR/usr/share/applications/"
 
-# Copy icon (try to generate, or use simple SVG)
+# Copy icon (must match Icon=serial-debug in the desktop file)
+# linuxdeploy errors out if it cannot find a suitable icon. We ship an SVG
+# under the scalable dir (same as the deb package) — rsvg/inkscape-compatible
+# converters may not be installed, so ensure the exact name resolves.
+ICON_SVG_DIR="$APP_DIR/usr/share/icons/hicolor/scalable/apps"
+mkdir -p "$ICON_SVG_DIR"
+cat > "$ICON_SVG_DIR/serial-debug.svg" << 'SVGEOF'
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+  <rect width="256" height="256" rx="32" fill="#1a1b26"/>
+  <g transform="translate(128,128)" fill="none" stroke="#7aa2f7" stroke-width="8" stroke-linecap="round">
+    <rect x="-72" y="-40" width="144" height="80" rx="8"/>
+    <rect x="-48" y="-24" width="96" height="48" rx="4"/>
+    <line x1="-48" y1="0" x2="48" y2="0"/>
+    <line x1="0" y1="-24" x2="0" y2="24"/>
+    <line x1="-48" y1="-12" x2="-12" y2="-12"/>
+    <line x1="-48" y1="12" x2="-12" y2="12"/>
+    <line x1="12" y1="-12" x2="48" y2="-12"/>
+    <line x1="12" y1="12" x2="48" y2="12"/>
+    <circle cx="0" cy="0" r="8" fill="#9ece6a" stroke="none"/>
+  </g>
+</svg>
+SVGEOF
+
+# Also generate a PNG if a converter is available (linuxdeploy prefers PNG)
 ICON_DIR="$APP_DIR/usr/share/icons/hicolor/256x256/apps"
-if command -v convert &>/dev/null && [ -f "$SCRIPT_DIR/../logo.ico" ]; then
-    convert "$SCRIPT_DIR/../logo.ico" -resize 256x256 "$ICON_DIR/serial-debug.png" 2>/dev/null || true
+mkdir -p "$ICON_DIR"
+if command -v rsvg-convert &>/dev/null; then
+    rsvg-convert -w 256 -h 256 "$ICON_SVG_DIR/serial-debug.svg" -o "$ICON_DIR/serial-debug.png" 2>/dev/null || true
+elif command -v convert &>/dev/null; then
+    convert "$ICON_SVG_DIR/serial-debug.svg" -resize 256x256 "$ICON_DIR/serial-debug.png" 2>/dev/null || true
+elif command -v inkscape &>/dev/null; then
+    inkscape "$ICON_SVG_DIR/serial-debug.svg" --export-type=png --export-filename="$ICON_DIR/serial-debug.png" 2>/dev/null || true
 fi
-if [ ! -f "$ICON_DIR/serial-debug.png" ]; then
-    mkdir -p "$APP_DIR/usr/share/icons/hicolor/scalable/apps"
-    cp "$SCRIPT_DIR/../logo.ico" "$APP_DIR/usr/share/icons/hicolor/scalable/apps/serial-debug.ico" 2>/dev/null || true
-fi
+ls -la "$ICON_DIR" 2>/dev/null || true
+ls -la "$ICON_SVG_DIR" 2>/dev/null || true
 
 # Download linuxdeploy if not cached
 LINUXDEPLOY="${OUTDIR}/linuxdeploy-x86_64.AppImage"
@@ -86,14 +112,20 @@ fi
     --appdir "$APP_DIR" \
     --plugin qt \
     --output appimage \
-    2>&1 | tail -20 || true
+    2>&1 | tail -30
 
 # Check if AppImage was produced
 if [ -f "${APPIMAGE_FILE}" ]; then
     echo "✅ AppImage created: ${APPIMAGE_FILE}"
     echo "   Size: $(du -h "${APPIMAGE_FILE}" | cut -f1)"
+elif [ -n "$(find "${OUTDIR}" -maxdepth 1 -name 'SerialDebug-*.AppImage' -type f 2>/dev/null)" ]; then
+    # linuxdeploy sometimes writes to a different name; pick it up
+    real_img="$(find "${OUTDIR}" -maxdepth 1 -name 'SerialDebug-*.AppImage' -type f 2>/dev/null | head -1)"
+    mv "$real_img" "${APPIMAGE_FILE}"
+    echo "✅ AppImage created (renamed): ${APPIMAGE_FILE}"
+    echo "   Size: $(du -h "${APPIMAGE_FILE}" | cut -f1)"
 else
-    echo "⚠ AppImage output not found at expected path."
-    echo "  Looking for any .AppImage in ${OUTDIR}..."
+    echo "ERROR: AppImage output not found."
     find "${OUTDIR}" -name "*.AppImage" -type f 2>/dev/null
+    exit 1
 fi
