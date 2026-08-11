@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
 
 env:
-  QT_VERSION: '6.7.*'
+  QT_VERSION: '6.5.*'
   APP_NAME: SerialDebug
   APP_VERSION: '2.0.0'
 
