@@ -290,7 +290,7 @@ jobs:
           tar -czf ../${{ env.APP_NAME }}-${{ matrix.artifact_suffix }}.tar.gz ${{ env.APP_NAME }}/
 
       - name: Upload build artifacts
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ env.APP_NAME }}-${{ matrix.artifact_suffix }}
           path: |
@@ -318,7 +318,7 @@ jobs:
           dir: '${{ github.workspace }}'
 
       - name: Setup MSVC
-        uses: ilammy/msvc-dev-cmd@v1
+        uses: ilammy/msvc-dev-cmd@v1.13.0
         with:
           arch: x64
 
@@ -359,7 +359,7 @@ jobs:
           Compress-Archive -Path deploy/* -DestinationPath ${{ env.APP_NAME }}-Windows-x86_64.zip
 
       - name: Upload build artifacts
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ env.APP_NAME }}-Windows-x86_64
           path: build/${{ env.APP_NAME }}-Windows-x86_64.zip
@@ -373,7 +373,7 @@ jobs:
 
     steps:
       - name: Download all artifacts
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v7
 
       - name: Create Release
         env:
