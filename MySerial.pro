@@ -9,7 +9,12 @@ QT       += core gui serialport
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
-CONFIG += c++17
+# Use C++17 for Qt6, C++11 for Qt5 (for broader compatibility)
+greaterThan(QT_MAJOR_VERSION, 5) {
+    CONFIG += c++17
+} else {
+    CONFIG += c++11
+}
 TARGET = SerialDebug
 TEMPLATE = app
 

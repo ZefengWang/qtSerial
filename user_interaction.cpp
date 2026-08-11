@@ -65,7 +65,9 @@ void serial::refreshPortList() {
     ui->portComboBox->addItem(serialStrList[i]);
   }
   if (serialStrList.isEmpty()) {
+#if QT_VERSION >= QT_VERSION_CHECK(5, 15, 0)
     ui->portComboBox->setPlaceholderText(tr("No ports found"));
+#endif
   }
 }
 
