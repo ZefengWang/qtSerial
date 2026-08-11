@@ -14,9 +14,13 @@ set(PROJECT_SOURCES
     user_interaction.cpp
     uart_setting.cpp
     uart_core.cpp
+    thememanager.cpp
+    languagemanager.cpp
     uart_interaction.h
     uart_setting.h
     uart_core.h
+    thememanager.h
+    languagemanager.h
     uart_interface.ui
     uart_setting.ui
     res.qrc
@@ -26,6 +30,26 @@ if(WIN32)
     add_executable(SerialDebug WIN32 ${PROJECT_SOURCES} logo.rc)
 else()
     add_executable(SerialDebug ${PROJECT_SOURCES})
+endif()
+
+# Compile .ts -> .qm using lrelease (Qt Linguist tool)
+find_program(QT_LRELEASE_EXECUTABLE
+    NAMES lrelease lrelease-qt6 lrelease6
+    HINTS ${Qt6_DIR}/bin
+)
+if(QT_LRELEASE_EXECUTABLE)
+    add_custom_command(
+        OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/MySerial_zh_CN.qm
+        COMMAND ${QT_LRELEASE_EXECUTABLE}
+                -removeidentical
+                ARGS ${CMAKE_CURRENT_SOURCE_DIR}/MySerial_zh_CN.ts
+                     -qm ${CMAKE_CURRENT_BINARY_DIR}/MySerial_zh_CN.qm
+        DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/MySerial_zh_CN.ts
+        COMMENT "Running lrelease to generate MySerial_zh_CN.qm"
+    )
+    add_custom_target(translations ALL
+        DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/MySerial_zh_CN.qm
+    )
 endif()
 
 target_link_libraries(SerialDebug PRIVATE

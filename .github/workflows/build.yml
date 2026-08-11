@@ -79,6 +79,7 @@ jobs:
         run: |
           sudo apt-get install -y \
             qtbase5-dev \
+            qttools5-dev-tools \
             libqt5serialport5-dev \
             qtchooser
 
@@ -110,6 +111,15 @@ jobs:
           fi
           make -j$(nproc)
 
+      - name: Compile translations (lrelease)
+        run: |
+          cd build
+          if [ "${{ matrix.qt_source }}" = "aqt" ]; then
+            export PATH="${Qt6_DIR:-${QT_ROOT_DIR}}/bin:$PATH"
+          fi
+          lrelease ../MySerial_zh_CN.ts -qm MySerial_zh_CN.qm
+          ls -la MySerial_zh_CN.qm
+
       - name: Deploy Qt libraries (X11 + Wayland + bundled libs)
         run: |
           cd build
@@ -118,6 +128,13 @@ jobs:
 
           # Copy the binary
           cp ${{ env.APP_NAME }} "$APP_DIR/"
+
+          # Copy compiled translation file (also embedded in resources, but keep external copy)
+          if [ -f "MySerial_zh_CN.qm" ]; then
+            mkdir -p "$APP_DIR/translations"
+            cp MySerial_zh_CN.qm "$APP_DIR/translations/"
+            echo "  [qm] copied MySerial_zh_CN.qm"
+          fi
 
           # --- Determine Qt directories ---
           # install-qt-action v4 sets QT_ROOT_DIR and QT_PLUGIN_PATH (not Qt6_DIR)
@@ -249,12 +266,23 @@ jobs:
           cd build
           nmake
 
+      - name: Compile translations (lrelease)
+        shell: cmd
+        run: |
+          cd build
+          lrelease ..\MySerial_zh_CN.ts -qm MySerial_zh_CN.qm
+          dir MySerial_zh_CN.qm
+
       - name: Deploy (windeployqt)
         run: |
           cd build
           mkdir deploy
           cp release/${{ env.APP_NAME }}.exe deploy/
           windeployqt deploy/${{ env.APP_NAME }}.exe --no-translations --no-system-d3d-compiler --no-opengl-sw
+          if (Test-Path MySerial_zh_CN.qm) {
+            New-Item -ItemType Directory -Force -Path deploy\translations | Out-Null
+            Copy-Item MySerial_zh_CN.qm deploy\translations\
+          }
 
       - name: Package zip
         run: |

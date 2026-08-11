@@ -1,18 +1,24 @@
 #include "uart_interaction.h"
 #include "uart_setting.h"
+#include "thememanager.h"
+#include "languagemanager.h"
 #include "ui_uart_interface.h"
 #include <QFile>
 #include <QTextStream>
 #include <QFileDialog>
 #include <QMessageBox>
+#include <QMenuBar>
+#include <QMenu>
+#include <QAction>
+#include <QActionGroup>
+#include <QSettings>
+#include <QEvent>
+#include <QApplication>
 
 serial::serial(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::serial){
   ui->setupUi(this);
-
-  // 加载样式表
-  loadStyleSheet();
 
   // 初始化串口
   uart_core_ = new Uartcore;
@@ -35,6 +41,15 @@ serial::serial(QWidget *parent) :
 
   // 初始化连接状态显示
   updateConnectionStatus(false);
+
+  // 设置菜单（主题 + 语言 + 退出/关于）
+  setupMenus();
+
+  // 连接主题和语言变更信号
+  connect(&ThemeManager::instance(), &ThemeManager::themeChanged,
+          this, &serial::onThemeChanged);
+  connect(&LanguageManager::instance(), &LanguageManager::languageChanged,
+          this, &serial::onLanguageChanged);
 }
 
 serial::~serial(){
@@ -48,13 +63,99 @@ serial::~serial(){
   delete ui;
 }
 
-void serial::loadStyleSheet() {
-  QFile styleFile(":/dark_style");
-  if (styleFile.open(QFile::ReadOnly)) {
-    QString styleSheet = QLatin1String(styleFile.readAll());
-    qApp->setStyleSheet(styleSheet);
-    styleFile.close();
+void serial::setupMenus() {
+  QMenuBar *menuBar = this->menuBar();
+
+  // --- View Menu (Theme + Language) ---
+  QMenu *viewMenu = menuBar->addMenu(tr("View"));
+
+  // Theme submenu
+  m_themeMenu = viewMenu->addMenu(tr("Theme"));
+  m_themeGroup = new QActionGroup(this);
+  m_themeGroup->setExclusive(true);
+
+  QString currentTheme = ThemeManager::instance().currentTheme();
+  for (const QString &theme : ThemeManager::instance().availableThemes()) {
+      QAction *act = m_themeMenu->addAction(ThemeManager::instance().themeDisplayName(theme));
+      act->setCheckable(true);
+      act->setChecked(theme == currentTheme);
+      act->setData(theme);
+      m_themeGroup->addAction(act);
+      connect(act, &QAction::triggered, this, [this, theme]() {
+          ThemeManager::instance().applyTheme(theme);
+      });
   }
+
+  viewMenu->addSeparator();
+
+  // Language submenu
+  m_languageMenu = viewMenu->addMenu(tr("Language"));
+  m_languageGroup = new QActionGroup(this);
+  m_languageGroup->setExclusive(true);
+
+  QString currentLang = LanguageManager::instance().currentLanguage();
+  for (const QString &lang : LanguageManager::instance().availableLanguages()) {
+      QAction *act = m_languageMenu->addAction(LanguageManager::instance().languageDisplayName(lang));
+      act->setCheckable(true);
+      act->setChecked(lang == currentLang);
+      act->setData(lang);
+      m_languageGroup->addAction(act);
+      connect(act, &QAction::triggered, this, [this, lang]() {
+          LanguageManager::instance().setLanguage(lang);
+      });
+  }
+
+  // --- Help Menu ---
+  QMenu *helpMenu = menuBar->addMenu(tr("Help"));
+  m_actionAbout = helpMenu->addAction(tr("About"));
+  connect(m_actionAbout, &QAction::triggered, this, [this]() {
+      QMessageBox::about(this, tr("About"),
+          tr("<h3>Serial Debug Assistant</h3>"
+             "<p>Version 2.0</p>"
+             "<p>A modern cross-platform serial port debug tool.</p>"
+             "<p>Built with Qt5/Qt6. Supports Linux (X11/Wayland) and Windows.</p>"));
+  });
+}
+
+void serial::changeEvent(QEvent *event) {
+  if (event->type() == QEvent::LanguageChange) {
+      retranslateUi();
+  }
+  QMainWindow::changeEvent(event);
+}
+
+void serial::retranslateUi() {
+  // Retranslate menu titles
+  menuBar()->clear();
+  setupMenus();
+
+  // Retranslate dynamic UI elements
+  updateConnectionStatus(is_the_serial_port_open_);
+
+  // Retranslate port combo placeholder
+  if (ui->portComboBox->count() == 0) {
+#if QT_VERSION >= QT_VERSION_CHECK(5, 15, 0)
+      ui->portComboBox->setPlaceholderText(tr("No ports found"));
+#endif
+  }
+}
+
+void serial::onThemeChanged(const QString &themeName) {
+  // Update checked state in theme menu
+  for (QAction *act : m_themeGroup->actions()) {
+      act->setChecked(act->data().toString() == themeName);
+  }
+}
+
+void serial::onLanguageChanged(const QString &languageCode) {
+  // Update checked state in language menu
+  for (QAction *act : m_languageGroup->actions()) {
+      act->setChecked(act->data().toString() == languageCode);
+  }
+}
+
+void serial::loadStyleSheet() {
+  // Now handled by ThemeManager
 }
 
 void serial::refreshPortList() {
@@ -137,7 +238,7 @@ void serial::on_refreshButton_clicked() {
 
 void serial::on_openPortButton_clicked() {
   if (ui->portComboBox->currentText().isEmpty()) {
-    appendReceiveData(NO_SERIAL_PORT);
+    appendReceiveData(tr("No Available Serial Port"));
     return;
   }
 
@@ -250,8 +351,22 @@ void serial::on_clearRecvButton_clicked() {
 }
 
 void serial::on_advancedSettingsBtn_clicked() {
-  setting param;
+  // 创建模态对话框，传入 this 作为 parent
+  setting param(this);
+
+  // 设置为模态
+  param.setModal(true);
+
+  // 加载串口数据
   param.find_available_serial_ports_and_add(uart_core_);
+
+  // 居中到主窗口（this 是顶层窗口，parentWidget() 为 null，需以主窗口几何为中心）
+  QRect parentGeometry = this->geometry();
+  QSize dlgSize = param.sizeHint();
+  QPoint center = parentGeometry.center() - QPoint(dlgSize.width() / 2, dlgSize.height() / 2);
+  param.move(center);
+
+  // 模态执行
   param.exec();
 
   if (!uart_core_->serial_name_.isEmpty()) {

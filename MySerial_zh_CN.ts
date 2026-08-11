@@ -6,368 +6,383 @@
     <message>
         <location filename="uart_core.cpp" line="79"/>
         <source>Error: </source>
-        <oldsource>Error：</oldsource>
         <translation>错误: </translation>
     </message>
     <message>
         <location filename="uart_core.cpp" line="80"/>
         <source>Illegal hex string:</source>
-        <translation>非法的16进制字符串:</translation>
+        <translation>非法的十六进制字符串:</translation>
     </message>
 </context>
 <context>
     <name>serial</name>
+    <!-- 窗口标题 -->
     <message>
-        <location filename="uart_interface.ui" line="20"/>
-        <source>serial</source>
-        <translatorcomment>Title</translatorcomment>
-        <translation>串口调试工具</translation>
+        <location filename="uart_interface.ui" line="26"/>
+        <source>Serial Debug Assistant</source>
+        <translation>串口调试助手</translation>
     </message>
     <message>
-        <location filename="uart_interface.ui" line="127"/>
-        <source>Refresh</source>
-        <translation>刷新设备</translation>
+        <location filename="uart_interface.ui" line="148"/>
+        <source>Serial Debug</source>
+        <translation>串口调试</translation>
+    </message>
+    <!-- 侧边栏分区标题 -->
+    <message>
+        <location filename="uart_interface.ui" line="168"/>
+        <source>Port Configuration</source>
+        <translation>串口配置</translation>
     </message>
     <message>
-        <location filename="uart_interface.ui" line="58"/>
-        <source>4800</source>
-        <translation></translation>
+        <location filename="uart_interface.ui" line="413"/>
+        <source>Display Options</source>
+        <translation>显示选项</translation>
     </message>
     <message>
-        <location filename="uart_interface.ui" line="63"/>
-        <source>9600</source>
-        <translation></translation>
+        <location filename="uart_interface.ui" line="475"/>
+        <source>Send Options</source>
+        <translation>发送选项</translation>
+    </message>
+    <!-- 串口选择 -->
+    <message>
+        <location filename="uart_interface.ui" line="196"/>
+        <source>Serial Port</source>
+        <translation>串口</translation>
     </message>
     <message>
-        <location filename="uart_interface.ui" line="68"/>
-        <source>19200</source>
-        <translation></translation>
+        <location filename="uart_interface.ui" line="258"/>
+        <source>Refresh Ports</source>
+        <translation>刷新串口列表</translation>
     </message>
     <message>
-        <location filename="uart_interface.ui" line="73"/>
-        <source>38400</source>
-        <translation></translation>
+        <location filename="uart_interface.ui" line="289"/>
+        <source>Baud Rate</source>
+        <translation>波特率</translation>
     </message>
+    <!-- 按钮 -->
     <message>
-        <location filename="uart_interface.ui" line="78"/>
-        <source>57600</source>
-        <translation></translation>
-    </message>
-    <message>
-        <location filename="uart_interface.ui" line="83"/>
-        <source>115200</source>
-        <translation></translation>
-    </message>
-    <message>
-        <location filename="uart_interface.ui" line="88"/>
-        <source>128000</source>
-        <translation></translation>
-    </message>
-    <message>
-        <location filename="uart_interface.ui" line="93"/>
-        <source>256000</source>
-        <translation></translation>
-    </message>
-    <message>
-        <location filename="uart_interface.ui" line="98"/>
-        <source>921600</source>
-        <translation></translation>
-    </message>
-    <message>
-        <location filename="uart_interface.ui" line="103"/>
-        <source>1500000</source>
-        <translation></translation>
-    </message>
-    <message>
-        <source>BaudRate</source>
-        <translation type="vanished">波特率</translation>
-    </message>
-    <message>
-        <location filename="uart_interface.ui" line="140"/>
-        <source>More Serial Port Setting</source>
-        <translation>更多串口设置</translation>
-    </message>
-    <message>
-        <location filename="uart_interface.ui" line="183"/>
-        <location filename="user_interaction.cpp" line="105"/>
+        <location filename="uart_interface.ui" line="377"/>
         <source>Open Port</source>
-        <oldsource>Open</oldsource>
         <translation>打开串口</translation>
     </message>
     <message>
-        <location filename="uart_interface.ui" line="196"/>
-        <source>Clear Text</source>
-        <translation>清除显示</translation>
-    </message>
-    <message>
-        <location filename="uart_interface.ui" line="260"/>
-        <source>Send</source>
-        <translation>发送</translation>
-    </message>
-    <message>
-        <location filename="uart_interface.ui" line="309"/>
-        <source>Timer</source>
-        <translation>定时发送</translation>
-    </message>
-    <message>
-        <location filename="uart_interface.ui" line="348"/>
-        <source>Save Files</source>
-        <translation>保存文件</translation>
-    </message>
-    <message>
-        <location filename="uart_interface.ui" line="355"/>
-        <source>Send with LFCR</source>
-        <translation>发送以LFCR结尾</translation>
-    </message>
-    <message>
-        <location filename="uart_interface.ui" line="388"/>
-        <source>About</source>
-        <translation>关于</translation>
-    </message>
-    <message>
         <location filename="uart_interface.ui" line="396"/>
-        <source>Menu</source>
-        <translation>菜单</translation>
+        <source>Advanced Settings</source>
+        <translation>高级设置</translation>
     </message>
     <message>
-        <location filename="uart_interface.ui" line="407"/>
-        <source>Preferences</source>
-        <translation>首选项</translation>
+        <location filename="uart_interface.ui" line="602"/>
+        <source>Clear All</source>
+        <translation>全部清除</translation>
     </message>
+    <!-- 显示选项 -->
     <message>
-        <location filename="uart_interface.ui" line="412"/>
-        <source>Exit</source>
-        <translation>退出</translation>
-    </message>
-    <message>
-        <location filename="uart_interface.ui" line="417"/>
-        <source>Licences</source>
-        <translation>许可证</translation>
-    </message>
-    <message>
-        <location filename="uart_interface.ui" line="422"/>
-        <source>Distributers</source>
-        <translation>贡献者</translation>
-    </message>
-    <message>
-        <location filename="uart_interface.ui" line="295"/>
-        <source>Hex Send</source>
-        <oldsource>Hex发送</oldsource>
-        <translation>十六进制发送</translation>
-    </message>
-    <message>
-        <location filename="uart_interface.ui" line="302"/>
-        <source>Hex Show</source>
-        <oldsource>Hex显示</oldsource>
+        <location filename="uart_interface.ui" line="438"/>
+        <source>Hex Display</source>
         <translation>十六进制显示</translation>
     </message>
     <message>
-        <location filename="uart_interface.ui" line="334"/>
-        <source>1000</source>
-        <translation></translation>
+        <location filename="uart_interface.ui" line="445"/>
+        <source>Show Timestamp</source>
+        <translation>显示时间戳</translation>
     </message>
     <message>
-        <location filename="uart_interface.ui" line="341"/>
+        <location filename="uart_interface.ui" line="455"/>
+        <source>Auto Scroll</source>
+        <translation>自动滚动</translation>
+    </message>
+    <!-- 发送选项 -->
+    <message>
+        <location filename="uart_interface.ui" line="500"/>
+        <source>Hex Send</source>
+        <translation>十六进制发送</translation>
+    </message>
+    <message>
+        <location filename="uart_interface.ui" line="507"/>
+        <source>Append CR+LF</source>
+        <translation>附加回车换行</translation>
+    </message>
+    <message>
+        <location filename="uart_interface.ui" line="514"/>
+        <source>Timer Send</source>
+        <translation>定时发送</translation>
+    </message>
+    <message>
+        <location filename="uart_interface.ui" line="564"/>
         <source>ms</source>
-        <oldsource>ms/次</oldsource>
-        <translation>ms</translation>
+        <translation>毫秒</translation>
+    </message>
+    <!-- 状态栏 -->
+    <message>
+        <location filename="uart_interface.ui" line="706"/>
+        <source>Disconnected</source>
+        <translation>未连接</translation>
     </message>
     <message>
-        <location filename="user_interaction.cpp" line="41"/>
-        <location filename="user_interaction.cpp" line="149"/>
+        <location filename="uart_interface.ui" line="726"/>
+        <source>No port selected</source>
+        <translation>未选择串口</translation>
+    </message>
+    <message>
+        <location filename="uart_interface.ui" line="764"/>
         <source>RX</source>
         <translation>接收</translation>
     </message>
     <message>
-        <location filename="user_interaction.cpp" line="48"/>
+        <location filename="uart_interface.ui" line="799"/>
         <source>TX</source>
         <translation>发送</translation>
     </message>
+    <!-- 数据区域标题 -->
     <message>
-        <location filename="user_interaction.cpp" line="55"/>
-        <source>Serial Port not connect</source>
-        <translation>串口未连接</translation>
+        <location filename="uart_interface.ui" line="879"/>
+        <source>Receive Data</source>
+        <translation>接收数据</translation>
     </message>
     <message>
-        <location filename="user_interaction.cpp" line="90"/>
+        <location filename="uart_interface.ui" line="917"/>
+        <source>Save Log</source>
+        <translation>保存日志</translation>
+    </message>
+    <message>
+        <location filename="uart_interface.ui" line="942"/>
+        <source>Clear</source>
+        <translation>清除</translation>
+    </message>
+    <message>
+        <location filename="uart_interface.ui" line="1034"/>
+        <source>Send Data</source>
+        <translation>发送数据</translation>
+    </message>
+    <message>
+        <location filename="uart_interface.ui" line="1072"/>
+        <source>Send</source>
+        <translation>发送</translation>
+    </message>
+    <!-- 菜单动作 -->
+    <message>
+        <location filename="uart_interface.ui" line="1105"/>
+        <source>Exit</source>
+        <translation>退出</translation>
+    </message>
+    <message>
+        <location filename="uart_interface.ui" line="1110"/>
+        <source>About</source>
+        <translation>关于</translation>
+    </message>
+    <!-- 代码中的 tr() 调用 -->
+    <message>
+        <location filename="user_interaction.cpp" line="70"/>
+        <source>View</source>
+        <translation>视图</translation>
+    </message>
+    <message>
+        <location filename="user_interaction.cpp" line="73"/>
+        <source>Theme</source>
+        <translation>主题</translation>
+    </message>
+    <message>
+        <location filename="user_interaction.cpp" line="92"/>
+        <source>Language</source>
+        <translation>语言</translation>
+    </message>
+    <message>
+        <location filename="user_interaction.cpp" line="109"/>
+        <source>Help</source>
+        <translation>帮助</translation>
+    </message>
+    <message>
+        <location filename="user_interaction.cpp" line="69"/>
+        <source>No ports found</source>
+        <translation>未发现可用串口</translation>
+    </message>
+    <message>
+        <location filename="user_interaction.cpp" line="77"/>
+        <source>Connected</source>
+        <translation>已连接</translation>
+    </message>
+    <message>
+        <location filename="user_interaction.cpp" line="88"/>
         <source>Close Port</source>
         <translation>关闭串口</translation>
     </message>
     <message>
         <location filename="user_interaction.cpp" line="91"/>
-        <source>Port already opended</source>
-        <translation>串口已打开</translation>
+        <source>Disconnected</source>
+        <translation>未连接</translation>
     </message>
     <message>
-        <location filename="user_interaction.cpp" line="106"/>
-        <source>Port already Closed</source>
-        <translation>串口已关闭</translation>
+        <location filename="user_interaction.cpp" line="92"/>
+        <source>No port selected</source>
+        <translation>未选择串口</translation>
     </message>
     <message>
-        <location filename="user_interaction.cpp" line="125"/>
-        <source>input error</source>
-        <translation>输入错误</translation>
+        <location filename="user_interaction.cpp" line="99"/>
+        <source>Open Port</source>
+        <translation>打开串口</translation>
     </message>
     <message>
-        <location filename="user_interaction.cpp" line="130"/>
-        <source>TX:</source>
-        <translation></translation>
+        <location filename="user_interaction.cpp" line="153"/>
+        <source>[System] Port opened successfully: %1</source>
+        <translation>[系统] 串口打开成功: %1</translation>
     </message>
     <message>
-        <source>No Input</source>
-        <translation type="vanished">串口已关闭</translation>
+        <location filename="user_interaction.cpp" line="155"/>
+        <source>[System] Failed to open port: %1</source>
+        <translation>[系统] 串口打开失败: %1</translation>
     </message>
     <message>
-        <source>Please Send Input Commands</source>
-        <translation type="vanished">请输入发送指令</translation>
+        <location filename="user_interaction.cpp" line="161"/>
+        <source>[System] Port closed</source>
+        <translation>[系统] 串口已关闭</translation>
     </message>
     <message>
-        <source>没有可以使用的串口</source>
-        <translation type="obsolete">没有可以使用的串口</translation>
+        <location filename="user_interaction.cpp" line="167"/>
+        <source>[System] Please open the serial port first</source>
+        <translation>[系统] 请先打开串口</translation>
     </message>
     <message>
-        <location filename="uart_interaction.h" line="16"/>
+        <location filename="user_interaction.cpp" line="201"/>
+        <source>[System] Please open the serial port first</source>
+        <translation>[系统] 请先打开串口</translation>
+    </message>
+    <message>
+        <location filename="user_interaction.cpp" line="207"/>
+        <source>[System] Timer send started: %1 ms</source>
+        <translation>[系统] 定时发送已启动: %1 毫秒</translation>
+    </message>
+    <message>
+        <location filename="user_interaction.cpp" line="211"/>
+        <source>[System] Timer send stopped</source>
+        <translation>[系统] 定时发送已停止</translation>
+    </message>
+    <message>
+        <location filename="user_interaction.cpp" line="278"/>
+        <source>[System] No data to save</source>
+        <translation>[系统] 没有可保存的数据</translation>
+    </message>
+    <message>
+        <location filename="user_interaction.cpp" line="284"/>
+        <source>Save Log File</source>
+        <translation>保存日志文件</translation>
+    </message>
+    <message>
+        <location filename="user_interaction.cpp" line="286"/>
+        <source>Text Files (*.txt);;All Files (*)</source>
+        <translation>文本文件 (*.txt);;所有文件 (*)</translation>
+    </message>
+    <message>
+        <location filename="user_interaction.cpp" line="304"/>
+        <source>[System] Log saved to: %1</source>
+        <translation>[系统] 日志已保存至: %1</translation>
+    </message>
+    <message>
+        <location filename="user_interaction.cpp" line="306"/>
+        <source>[System] Failed to save log file</source>
+        <translation>[系统] 日志保存失败</translation>
+    </message>
+    <message>
+        <location filename="uart_interaction.h" line="18"/>
         <source>No Available Serial Port</source>
-        <translation>没有可以使用的串口</translation>
+        <translation>没有可用的串口</translation>
     </message>
 </context>
 <context>
     <name>setting</name>
     <message>
-        <location filename="uart_setting.ui" line="14"/>
-        <source>Dialog</source>
-        <translation>对话框</translation>
+        <location filename="uart_setting.ui" line="32"/>
+        <source>Advanced Serial Settings</source>
+        <translation>串口高级设置</translation>
     </message>
     <message>
-        <location filename="uart_setting.ui" line="49"/>
-        <source>4800</source>
-        <translation>4800</translation>
+        <location filename="uart_setting.ui" line="80"/>
+        <source>Advanced Serial Settings</source>
+        <translation>串口高级设置</translation>
     </message>
     <message>
-        <location filename="uart_setting.ui" line="54"/>
-        <source>9600</source>
-        <translation>9600</translation>
+        <location filename="uart_setting.ui" line="87"/>
+        <source>Configure serial port parameters</source>
+        <translation>配置串口参数</translation>
     </message>
     <message>
-        <location filename="uart_setting.ui" line="59"/>
-        <source>19200</source>
-        <translation>19200</translation>
-    </message>
-    <message>
-        <location filename="uart_setting.ui" line="64"/>
-        <source>38400</source>
-        <translation>38400</translation>
-    </message>
-    <message>
-        <location filename="uart_setting.ui" line="69"/>
-        <source>57600</source>
-        <translation>57600</translation>
-    </message>
-    <message>
-        <location filename="uart_setting.ui" line="74"/>
-        <source>115200</source>
-        <translation>115200</translation>
-    </message>
-    <message>
-        <location filename="uart_setting.ui" line="79"/>
-        <source>128000</source>
-        <translation>128000</translation>
-    </message>
-    <message>
-        <location filename="uart_setting.ui" line="84"/>
-        <source>256000</source>
-        <translation>256000</translation>
-    </message>
-    <message>
-        <location filename="uart_setting.ui" line="89"/>
-        <source>921600</source>
-        <translation>921600</translation>
-    </message>
-    <message>
-        <location filename="uart_setting.ui" line="94"/>
-        <source>1500000</source>
-        <translation>1500000</translation>
-    </message>
-    <message>
-        <location filename="uart_setting.ui" line="115"/>
-        <location filename="uart_setting.ui" line="202"/>
-        <source>5</source>
-        <translation>5</translation>
-    </message>
-    <message>
-        <location filename="uart_setting.ui" line="120"/>
-        <source>6</source>
-        <translation>6</translation>
-    </message>
-    <message>
-        <location filename="uart_setting.ui" line="125"/>
-        <source>7</source>
-        <translation>7</translation>
-    </message>
-    <message>
-        <location filename="uart_setting.ui" line="130"/>
-        <source>8</source>
-        <translation>8</translation>
-    </message>
-    <message>
-        <location filename="uart_setting.ui" line="151"/>
-        <location filename="uart_setting.ui" line="228"/>
-        <source>1</source>
-        <translation>1</translation>
-    </message>
-    <message>
-        <location filename="uart_setting.ui" line="156"/>
-        <location filename="uart_setting.ui" line="187"/>
-        <location filename="uart_setting.ui" line="233"/>
-        <source>2</source>
-        <translation>2</translation>
-    </message>
-    <message>
-        <location filename="uart_setting.ui" line="161"/>
-        <location filename="uart_setting.ui" line="192"/>
-        <source>3</source>
-        <translation>3</translation>
-    </message>
-    <message>
-        <location filename="uart_setting.ui" line="182"/>
-        <location filename="uart_setting.ui" line="223"/>
-        <source>0</source>
-        <translation>0</translation>
-    </message>
-    <message>
-        <location filename="uart_setting.ui" line="197"/>
-        <source>4</source>
-        <translation>4</translation>
-    </message>
-    <message>
-        <location filename="uart_setting.ui" line="263"/>
-        <source>Port</source>
+        <location filename="uart_setting.ui" line="149"/>
+        <source>Serial Port</source>
         <translation>串口</translation>
     </message>
     <message>
-        <location filename="uart_setting.ui" line="276"/>
-        <source>Band Rate</source>
+        <location filename="uart_setting.ui" line="199"/>
+        <source>Baud Rate</source>
         <translation>波特率</translation>
     </message>
     <message>
-        <location filename="uart_setting.ui" line="289"/>
+        <location filename="uart_setting.ui" line="299"/>
         <source>Data Bits</source>
         <translation>数据位</translation>
     </message>
     <message>
-        <location filename="uart_setting.ui" line="302"/>
+        <location filename="uart_setting.ui" line="369"/>
         <source>Stop Bits</source>
         <translation>停止位</translation>
     </message>
     <message>
-        <location filename="uart_setting.ui" line="315"/>
-        <source>Parity Bits</source>
+        <location filename="uart_setting.ui" line="434"/>
+        <source>Parity</source>
         <translation>校验位</translation>
     </message>
     <message>
-        <location filename="uart_setting.ui" line="328"/>
+        <location filename="uart_setting.ui" line="454"/>
+        <source>None</source>
+        <translation>无</translation>
+    </message>
+    <message>
+        <location filename="uart_setting.ui" line="459"/>
+        <source>Even</source>
+        <translation>偶校验</translation>
+    </message>
+    <message>
+        <location filename="uart_setting.ui" line="464"/>
+        <source>Odd</source>
+        <translation>奇校验</translation>
+    </message>
+    <message>
+        <location filename="uart_setting.ui" line="469"/>
+        <source>Space</source>
+        <translation>空格校验</translation>
+    </message>
+    <message>
+        <location filename="uart_setting.ui" line="474"/>
+        <source>Mark</source>
+        <translation>标记校验</translation>
+    </message>
+    <message>
+        <location filename="uart_setting.ui" line="509"/>
         <source>Flow Control</source>
         <translation>流控</translation>
+    </message>
+    <message>
+        <location filename="uart_setting.ui" line="529"/>
+        <source>None</source>
+        <translation>无</translation>
+    </message>
+    <message>
+        <location filename="uart_setting.ui" line="534"/>
+        <source>Hardware</source>
+        <translation>硬件流控</translation>
+    </message>
+    <message>
+        <location filename="uart_setting.ui" line="539"/>
+        <source>Software</source>
+        <translation>软件流控</translation>
+    </message>
+    <message>
+        <location filename="uart_setting.ui" line="618"/>
+        <source>Cancel</source>
+        <translation>取消</translation>
+    </message>
+    <message>
+        <location filename="uart_setting.ui" line="637"/>
+        <source>OK</source>
+        <translation>确定</translation>
     </message>
 </context>
 </TS>

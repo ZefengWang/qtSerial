@@ -4,6 +4,7 @@
 #include <QMainWindow>
 #include <QTimer>
 #include <QDateTime>
+#include <QActionGroup>
 #include "uart_core.h"
 #include "qserialport.h"
 
@@ -15,11 +16,12 @@ class serial : public QMainWindow
 {
   Q_OBJECT
 
-  #define NO_SERIAL_PORT tr("No Available Serial Port")
-
 public:
   explicit serial(QWidget *parent = 0);
   ~serial();
+
+protected:
+  void changeEvent(QEvent *event) override;
 
 private slots:
   void on_refreshButton_clicked();
@@ -34,6 +36,10 @@ private slots:
   void on_saveLogButton_clicked();
   void timerSendData();
 
+  // Theme & Language slots
+  void onThemeChanged(const QString &themeName);
+  void onLanguageChanged(const QString &languageCode);
+
 private:
   void loadStyleSheet();
   void setupConnections();
@@ -43,13 +49,23 @@ private:
   void formatHexDisplay(QByteArray &data);
   QString formatByteCount(qint64 bytes);
 
-private:
+  void setupMenus();
+  void retranslateUi();
+
   Ui::serial *ui;
   Uartcore *uart_core_;
   QTimer *send_timer_;
   qint64 rx_quantity_ = 0;
   qint64 tx_quantity_ = 0;
   bool is_the_serial_port_open_ = false;
+
+  // Menu actions
+  QAction *m_actionExit;
+  QAction *m_actionAbout;
+  QMenu   *m_themeMenu;
+  QMenu   *m_languageMenu;
+  QActionGroup *m_themeGroup;
+  QActionGroup *m_languageGroup;
 };
 
 #endif // SERIAL_H

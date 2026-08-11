@@ -25,12 +25,16 @@ SOURCES += \
     main.cpp \
     user_interaction.cpp \
     uart_setting.cpp \
-    uart_core.cpp
+    uart_core.cpp \
+    thememanager.cpp \
+    languagemanager.cpp
 
 HEADERS  += \
     uart_core.h \
     uart_setting.h \
-    uart_interaction.h
+    uart_interaction.h \
+    thememanager.h \
+    languagemanager.h
 
 FORMS    += \
     uart_interface.ui \
@@ -41,7 +45,8 @@ TRANSLATIONS += \
 
 DISTFILES += \
     MySerial_zh_CN.qm \
-    styles/dark.qss
+    styles/dark.qss \
+    styles/light.qss
 
 RC_FILE = logo.rc
 
