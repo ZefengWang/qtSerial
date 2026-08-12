@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
 
 env:
-  APP_NAME: SerialDebug
+  APP_NAME: serial-debug
   APP_VERSION: '2.0.1'
 
 jobs:
@@ -146,7 +146,7 @@ jobs:
             ${{ env.APP_NAME }} \
             ${{ env.APP_VERSION }}-${{ matrix.artifact_suffix }} \
             deploy
-          ls -lh deploy/SerialDebug-*.AppImage
+          ls -lh deploy/serial-debug-*.AppImage
 
       - name: Deploy bundled Qt libs (tarball)
         if: matrix.build_tarball == 'true'
@@ -209,7 +209,7 @@ jobs:
           patchelf --force-rpath --set-rpath '$ORIGIN/lib' "$APP_DIR/${{ env.APP_NAME }}"
           echo "RPATH set to: $(patchelf --print-rpath "$APP_DIR/${{ env.APP_NAME }}")"
 
-          printf '#!/bin/bash\nDIR="$(cd "$(dirname "$0")" && pwd)"\nexport QT_PLUGIN_PATH="$DIR/plugins"\nexport LD_LIBRARY_PATH="$DIR/lib:$DIR:$LD_LIBRARY_PATH"\nif [ -n "$WAYLAND_DISPLAY" ]; then\n  export QT_QPA_PLATFORM=wayland\nelse\n  export QT_QPA_PLATFORM=xcb\nfi\nexec "$DIR/SerialDebug" "$@"\n' > "$APP_DIR/run.sh"
+          printf '#!/bin/bash\nDIR="$(cd "$(dirname "$0")" && pwd)"\nexport QT_PLUGIN_PATH="$DIR/plugins"\nexport LD_LIBRARY_PATH="$DIR/lib:$DIR:$LD_LIBRARY_PATH"\nif [ -n "$WAYLAND_DISPLAY" ]; then\n  export QT_QPA_PLATFORM=wayland\nelse\n  export QT_QPA_PLATFORM=xcb\nfi\nexec "$DIR/serial-debug" "$@"\n' > "$APP_DIR/run.sh"
           chmod +x "$APP_DIR/run.sh"
 
           echo ""
@@ -234,7 +234,7 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: ${{ env.APP_NAME }}-${{ matrix.artifact_suffix }}-AppImage
-          path: build/deploy/SerialDebug-*.AppImage
+          path: build/deploy/serial-debug-*.AppImage
 
       - name: Upload tarball
         if: matrix.build_tarball == 'true'
@@ -327,7 +327,7 @@ jobs:
       - name: Download all artifacts (flattened)
         uses: actions/download-artifact@v7
         with:
-          pattern: 'SerialDebug-*'
+          pattern: 'serial-debug-*'
           merge-multiple: true
           path: artifacts
 
@@ -351,16 +351,16 @@ jobs:
 
           ### 下载说明 / Download
           - **deb 包**：直接下载 .deb 文件（无需解压 zip）。
-            - \`SerialDebug_2.0.1_Linux-ubuntu2204-qt5-x86_64.deb\`（Qt5）
-            - \`SerialDebug_2.0.1_Linux-ubuntu2404-qt6-x86_64.deb\`（Qt6）
-            - \`SerialDebug_2.0.1_Linux-ubuntu2604-qt6-x86_64.deb\`（Qt6，Ubuntu 26.04 原生）
+            - \`serial-debug_2.0.1_Linux-ubuntu2204-qt5-x86_64.deb\`（Qt5）
+            - \`serial-debug_2.0.1_Linux-ubuntu2404-qt6-x86_64.deb\`（Qt6）
+            - \`serial-debug_2.0.1_Linux-ubuntu2604-qt6-x86_64.deb\`（Qt6，Ubuntu 26.04 原生）
           - **不要从 Actions 的 Artifacts 下载**——那里会把文件打成 zip。请从本 Release 的 Assets 直接下载原始 .deb。
           - **AppImage**：下载后 chmod +x 直接运行，无需安装。
-          - **Windows**：解压 zip 后运行 SerialDebug.exe。
+          - **Windows**：解压 zip 后运行 serial-debug.exe。
 
           ### 安装说明 / Installation
-          - **deb**: \`sudo dpkg -i SerialDebug_*.deb\`，会自动安装 Qt 依赖和 udev 规则，并将当前用户加入 dialout 组。
-          - **AppImage**: \`chmod +x SerialDebug_*.AppImage && ./SerialDebug_*.AppImage\`
+          - **deb**: \`sudo dpkg -i serial-debug_*.deb\`，会自动安装 Qt 依赖和 udev 规则，并将当前用户加入 dialout 组。
+          - **AppImage**: \`chmod +x serial-debug_*.AppImage && ./serial-debug_*.AppImage\`
 
           ### 完整变更 / Full Changelog
           ${{ github.event.head_commit.message || 'See commits for details' }}"

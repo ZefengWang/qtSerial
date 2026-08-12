@@ -10,7 +10,9 @@ int main(int argc, char *argv[])
   QApplication a(argc, argv);
 
   // 设置应用程序信息
-  a.setApplicationName("Serial Debug Assistant");
+  // applicationName 同时决定 WM_CLASS，需与 .desktop 的 StartupWMClass 一致
+  a.setApplicationName("serial-debug");
+  a.setApplicationDisplayName("Serial Debug Assistant");
   a.setOrganizationName("SerialDebug");
   a.setApplicationVersion("2.0.1");
   a.setWindowIcon(QIcon(":/logo"));

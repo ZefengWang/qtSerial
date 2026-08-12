@@ -82,10 +82,10 @@
 
 | 平台 | 下载文件名 | Qt 版本 | 说明 |
 |------|-----------|---------|------|
-| Linux x86_64 | `SerialDebug-Linux-ubuntu2604-qt6-x86_64.tar.gz` | Qt 6.5.3 | Ubuntu 26.04 构建，推荐 |
-| Linux x86_64 | `SerialDebug-Linux-ubuntu2404-qt5-x86_64.tar.gz` | Qt 5.15 | Ubuntu 24.04 构建，兼容旧系统 |
-| Linux x86_64 | `SerialDebug-Linux-ubuntu2204-qt5-x86_64.tar.gz` | Qt 5.15 | Ubuntu 22.04 构建，兼容旧系统 |
-| Windows x64 | `SerialDebug-Windows-x86_64.zip` | Qt 6.5.3 | Windows 10/11 |
+| Linux x86_64 | `serial-debug-Linux-ubuntu2604-qt6-x86_64.tar.gz` | Qt 6.5.3 | Ubuntu 26.04 构建，推荐 |
+| Linux x86_64 | `serial-debug-Linux-ubuntu2404-qt5-x86_64.tar.gz` | Qt 5.15 | Ubuntu 24.04 构建，兼容旧系统 |
+| Linux x86_64 | `serial-debug-Linux-ubuntu2204-qt5-x86_64.tar.gz` | Qt 5.15 | Ubuntu 22.04 构建，兼容旧系统 |
+| Windows x64 | `serial-debug-Windows-x86_64.zip` | Qt 6.5.3 | Windows 10/11 |
 
 ### 方式二：从 Release 下载（稳定版本）
 
@@ -95,21 +95,21 @@
 
 ```bash
 # 解压
-tar -xzf SerialDebug-Linux-*.tar.gz
-cd SerialDebug/
+tar -xzf serial-debug-Linux-*.tar.gz
+cd serial-debug/
 
 # 方式一：使用启动脚本（自动检测 X11/Wayland）
 ./run.sh
 
 # 方式二：直接运行（已通过 RPATH 自动查找 ./lib 中的 Qt 库）
-./SerialDebug
+./serial-debug
 ```
 
 > 所有 Qt 运行时库已打包在 `lib/` 目录中，无需额外安装 Qt。
 
 ### Windows 运行方式
 
-解压 zip 文件后，双击 `SerialDebug.exe` 即可运行。
+解压 zip 文件后，双击 `serial-debug.exe` 即可运行。
 
 ## 🔨 从源码编译
 
@@ -145,7 +145,7 @@ qmake6 MySerial.pro   # Qt6
 make -j$(nproc)
 
 # ---------- 运行 ----------
-./SerialDebug
+./serial-debug
 ```
 
 ### Windows 编译
@@ -262,7 +262,7 @@ sudo chmod 666 /dev/ttyUSB0
 
 ```bash
 # 强制使用 X11 后端
-QT_QPA_PLATFORM=xcb ./SerialDebug
+QT_QPA_PLATFORM=xcb ./serial-debug
 
 # 或使用启动脚本（自动检测）
 ./run.sh

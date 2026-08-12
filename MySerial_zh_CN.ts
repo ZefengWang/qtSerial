@@ -192,6 +192,16 @@
         <translation>帮助</translation>
     </message>
     <message>
+        <location filename="user_interaction.cpp" line="135"/>
+        <source>Settings</source>
+        <translation>设置</translation>
+    </message>
+    <message>
+        <location filename="user_interaction.cpp" line="136"/>
+        <source>Advanced Settings...</source>
+        <translation>高级设置...</translation>
+    </message>
+    <message>
         <location filename="user_interaction.cpp" line="69"/>
         <source>No ports found</source>
         <translation>未发现可用串口</translation>

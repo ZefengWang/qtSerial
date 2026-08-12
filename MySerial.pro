@@ -15,7 +15,8 @@ greaterThan(QT_MAJOR_VERSION, 5) {
 } else {
     CONFIG += c++11
 }
-TARGET = SerialDebug
+# Executable name: lowercase (release/install name must match .desktop Exec & StartupWMClass)
+TARGET = serial-debug
 TEMPLATE = app
 
 # Version definition

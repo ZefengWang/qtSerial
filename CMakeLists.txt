@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(SerialDebug VERSION 2.0.1 LANGUAGES CXX)
+project(serial-debug VERSION 2.0.1 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -27,9 +27,9 @@ set(PROJECT_SOURCES
 )
 
 if(WIN32)
-    add_executable(SerialDebug WIN32 ${PROJECT_SOURCES} logo.rc)
+    add_executable(serial-debug WIN32 ${PROJECT_SOURCES} logo.rc)
 else()
-    add_executable(SerialDebug ${PROJECT_SOURCES})
+    add_executable(serial-debug ${PROJECT_SOURCES})
 endif()
 
 # Compile .ts -> .qm using lrelease (Qt Linguist tool)
@@ -52,20 +52,20 @@ if(QT_LRELEASE_EXECUTABLE)
     )
 endif()
 
-target_link_libraries(SerialDebug PRIVATE
+target_link_libraries(serial-debug PRIVATE
     Qt6::Core
     Qt6::Gui
     Qt6::Widgets
     Qt6::SerialPort
 )
 
-target_compile_definitions(SerialDebug PRIVATE
+target_compile_definitions(serial-debug PRIVATE
     APP_VERSION="${PROJECT_VERSION}"
 )
 
 # Install rules
 include(GNUInstallDirs)
-install(TARGETS SerialDebug
+install(TARGETS serial-debug
     BUNDLE DESTINATION .
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
@@ -73,9 +73,9 @@ install(TARGETS SerialDebug
 
 # Qt deployment on Windows
 if(WIN32)
-    add_custom_command(TARGET SerialDebug POST_BUILD
+    add_custom_command(TARGET serial-debug POST_BUILD
         COMMAND Qt6::windeployqt
-        ARGS --no-translations --no-system-d3d-compiler --no-opengl-sw $<TARGET_FILE:SerialDebug>
+        ARGS --no-translations --no-system-d3d-compiler --no-opengl-sw $<TARGET_FILE:serial-debug>
         COMMENT "Deploying Qt dependencies..."
     )
 endif()

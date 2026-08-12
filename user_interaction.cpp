@@ -131,6 +131,11 @@ void serial::setupMenus() {
       });
   }
 
+  // --- Settings Menu ---
+  QMenu *settingsMenu = menuBar->addMenu(tr("Settings"));
+  QAction *m_settingsAction = settingsMenu->addAction(tr("Advanced Settings..."));
+  connect(m_settingsAction, &QAction::triggered, this, &serial::on_advancedSettingsBtn_clicked);
+
   // --- Help Menu ---
   QMenu *helpMenu = menuBar->addMenu(tr("Help"));
   m_actionAbout = helpMenu->addAction(tr("About"));
@@ -151,6 +156,9 @@ void serial::changeEvent(QEvent *event) {
 }
 
 void serial::retranslateUi() {
+  // Retranslate all static UI labels from the .ui file
+  ui->retranslateUi(this);
+
   // Retranslate menu titles
   menuBar()->clear();
   setupMenus();

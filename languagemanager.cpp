@@ -100,6 +100,9 @@ bool LanguageManager::setLanguage(const QString &languageCode)
     searchPaths << appDir + "/" + qmFile
                 << appDir + "/translations/" + qmFile
                 << ":/translations/" + qmFile;
+    // Shared install location (e.g. .deb packages install to /usr/share/serial-debug)
+    searchPaths << "/usr/share/serial-debug/translations/" + qmFile
+                << "/usr/local/share/serial-debug/translations/" + qmFile;
 
     bool loaded = false;
     for (const QString &path : searchPaths) {
