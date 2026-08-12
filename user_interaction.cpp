@@ -3,6 +3,8 @@
 #include "thememanager.h"
 #include "languagemanager.h"
 #include "ui_uart_interface.h"
+#include "service/ViewManager.hpp"
+
 #include <QFile>
 #include <QTextStream>
 #include <QFileDialog>
@@ -14,7 +16,156 @@
 #include <QSettings>
 #include <QEvent>
 #include <QApplication>
+#include <QPainter>
+#include <QPushButton>
+#include <QLabel>
+#include <QHBoxLayout>
+#include <QVBoxLayout>
+#include <QListWidgetItem>
+#include <QTableWidgetItem>
+#include <QCheckBox>
+#include <QHeaderView>
+#include <QScrollArea>
+#include <QFrame>
+#include <QPolygonF>
+#include <cmath>
 
+// ============================================================
+// 私有辅助：一个可绘制波形/3D 姿态的视图卡片。
+// 直接以自定义绘制实现，避免额外依赖 charts 模块（环境无 QtCharts）。
+// ============================================================
+class VizPlotWidget : public QWidget {
+public:
+    explicit VizPlotWidget(const QString &typeName, const QStringList &fields, QWidget *parent = nullptr)
+        : QWidget(parent), typeName_(typeName), fields_(fields) {
+        // 每个字段独立数据缓冲（环形采样），示例数据用于演示。
+        for (int i = 0; i < fields_.size(); ++i) {
+            series_.append(QVector<double>());
+            phase_.append(0.0);
+        }
+        setMinimumHeight(140);
+    }
+
+    void pushSample(const sd::Frame &frame) {
+        if (typeName_ == QLatin1String("3D姿态"))
+            push3D(frame);
+        else
+            pushWave(frame);
+        update();
+    }
+
+    void pushEmpty() {
+        // 无数据时也推进演示曲线，便于界面可见。
+        for (int i = 0; i < series_.size(); ++i) {
+            phase_[i] += 0.35;
+            double v = std::sin(phase_[i]) * 30.0 + 50.0;
+            series_[i].append(v);
+            if (series_[i].size() > 200) series_[i].removeFirst();
+        }
+        update();
+    }
+
+protected:
+    void paintEvent(QPaintEvent *) override {
+        QPainter p(this);
+        p.setRenderHint(QPainter::Antialiasing);
+        p.fillRect(rect(), QColor("#12121a"));
+
+        // 网格
+        p.setPen(QPen(QColor(255, 255, 255, 18), 1));
+        int step = 20;
+        for (int x = 0; x < width(); x += step) p.drawLine(x, 0, x, height());
+        for (int y = 0; y < height(); y += step) p.drawLine(0, y, width(), y);
+
+        if (typeName_ == QLatin1String("3D姿态")) {
+            draw3D(p);
+        } else {
+            drawWave(p);
+        }
+
+        // 字段图例
+        int lx = 8, ly = 14;
+        p.setPen(Qt::white);
+        p.drawText(8, height() - 8,
+                   QString("%1 · %2").arg(typeName_, fields_.join(" + ")));
+        Q_UNUSED(lx); Q_UNUSED(ly);
+    }
+
+private:
+    void drawWave(QPainter &p) {
+        static const QColor palette[] = {
+            QColor("#7aa2f7"), QColor("#9ece6a"), QColor("#e0af68"),
+            QColor("#f7768e"), QColor("#bb9af7")};
+        for (int s = 0; s < series_.size(); ++s) {
+            if (series_[s].isEmpty()) continue;
+            QColor c = palette[s % 5];
+            p.setPen(QPen(c, 1.8));
+            QPolygonF poly;
+            int n = series_[s].size();
+            for (int i = 0; i < n; ++i) {
+                double x = width() * i / 200.0;
+                double y = height() - height() * (series_[s].at(i) / 100.0);
+                poly << QPointF(x, y);
+            }
+            p.drawPolyline(poly);
+        }
+    }
+
+    void draw3D(QPainter &p) {
+        // 简化 3D 姿态：根据 roll/pitch/yaw 三个字段值绘制一个"姿态方块"。
+        double roll = 0, pitch = 0, yaw = 0;
+        if (series_.size() >= 1) roll  = series_[0].isEmpty() ? 0 : (series_[0].last() - 50) / 50.0;
+        if (series_.size() >= 2) pitch = series_[1].isEmpty() ? 0 : (series_[1].last() - 50) / 50.0;
+        if (series_.size() >= 3) yaw   = series_[2].isEmpty() ? 0 : (series_[2].last() - 50) / 50.0;
+
+        int cx = width() / 2, cy = height() / 2;
+        int half = qMin(width(), height()) / 6;
+        QColor body("#7aa2f7");
+        p.setPen(QPen(body, 2));
+        QVector<QPointF> face = {
+            QPointF(cx - half, cy - half + pitch * 20),
+            QPointF(cx + half, cy - half + roll * 20),
+            QPointF(cx + half, cy + half - yaw * 20),
+            QPointF(cx - half, cy + half)};
+        p.setBrush(QColor(122, 162, 247, 40));
+        p.drawPolygon(face);
+
+        // 三轴参考
+        p.setPen(QPen(QColor(255, 255, 255, 60), 1));
+        p.drawLine(cx - half - 20, cy, cx + half + 20, cy);
+        p.drawLine(cx, cy - half - 20, cx, cy + half + 20);
+    }
+
+    QString typeName_;
+    QStringList fields_;
+    QVector<QVector<double>> series_;
+    QVector<double> phase_;
+
+    void pushWave(const sd::Frame &frame) {
+        for (int s = 0; s < fields_.size(); ++s) {
+            bool found = false;
+            double v = frame.numericValue(fields_.at(s).toStdString(), &found);
+            if (found) {
+                series_[s].append(v);
+                if (series_[s].size() > 200) series_[s].removeFirst();
+            }
+        }
+    }
+    void push3D(const sd::Frame &frame) {
+        for (int s = 0; s < fields_.size(); ++s) {
+            bool found = false;
+            double v = frame.numericValue(fields_.at(s).toStdString(), &found);
+            if (found) {
+                series_[s].append(v);
+                if (series_[s].size() > 200) series_[s].removeFirst();
+            }
+        }
+    }
+};
+
+// ============================================================
+// 主窗口
+// ============================================================
 serial::serial(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::serial){
@@ -38,9 +189,17 @@ serial::serial(QWidget *parent) :
 
   // 数据经 EventBus 到达后，由 SerialWorker 转发为本信号
   connect(worker_, &SerialWorker::dataReceived, this, &serial::readSerialData);
+  // 协议帧：更新字段池并由可视化视图消费
+  connect(worker_, &SerialWorker::frameReceived, this, &serial::onFrameReceived);
 
   // 初始化连接状态显示
   updateConnectionStatus(false);
+
+  // 配置导航（QListWidget 四页 -> QStackedWidget）
+  setupConnections();
+
+  // 终端输入框回车发送
+  connect(ui->termInput, &QLineEdit::returnPressed, this, &serial::onTermInputReturnPressed);
 
   // 设置菜单（主题 + 语言 + 退出/关于）
   setupMenus();
@@ -50,6 +209,22 @@ serial::serial(QWidget *parent) :
           this, &serial::onThemeChanged);
   connect(&LanguageManager::instance(), &LanguageManager::languageChanged,
           this, &serial::onLanguageChanged);
+
+  // 初始化协议表头
+  ui->protoTable->setColumnCount(4);
+  QStringList hdr;
+  hdr << tr("勾选") << tr("名称") << tr("类型") << tr("长度");
+  ui->protoTable->setHorizontalHeaderLabels(hdr);
+  ui->protoTable->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
+  ui->protoTable->setSelectionBehavior(QAbstractItemView::SelectRows);
+  ui->protoTable->setSelectionMode(QAbstractItemView::SingleSelection);
+
+  // 初始化可视化源列表
+  ui->vizSourceList->setSelectionMode(QAbstractItemView::MultiSelection);
+
+  // 默认切换到基础页
+  ui->navList->setCurrentRow(0);
+  on_navList_currentRowChanged(0);
 }
 
 serial::~serial(){
@@ -61,6 +236,12 @@ serial::~serial(){
     // worker_ 由 Qt 父子机制释放（this 为 parent）
   }
   delete ui;
+}
+
+void serial::setupConnections() {
+  // 导航：左侧列表 -> 右侧堆叠页
+  connect(ui->navList, &QListWidget::currentRowChanged,
+          this, &serial::on_navList_currentRowChanged);
 }
 
 void serial::setupMenus() {
@@ -116,9 +297,9 @@ void serial::setupMenus() {
   connect(m_actionAbout, &QAction::triggered, this, [this]() {
       QMessageBox::about(this, tr("About"),
           tr("<h3>Serial Debug Assistant</h3>"
-             "<p>Version 2.0</p>"
+             "<p>Version 2.3</p>"
              "<p>A modern cross-platform serial port debug tool.</p>"
-             "<p>Built with Qt5/Qt6. Supports Linux (X11/Wayland) and Windows.</p>"));
+             "<p>Four UI variants: Qt Widgets / TUI / QML / Browser.</p>"));
   });
 }
 
@@ -149,14 +330,12 @@ void serial::retranslateUi() {
 }
 
 void serial::onThemeChanged(const QString &themeName) {
-  // Update checked state in theme menu
   for (QAction *act : m_themeGroup->actions()) {
       act->setChecked(act->data().toString() == themeName);
   }
 }
 
 void serial::onLanguageChanged(const QString &languageCode) {
-  // Update checked state in language menu
   for (QAction *act : m_languageGroup->actions()) {
       act->setChecked(act->data().toString() == languageCode);
   }
@@ -166,6 +345,23 @@ void serial::loadStyleSheet() {
   // Now handled by ThemeManager
 }
 
+// ============================================================
+// 导航
+// ============================================================
+void serial::on_navList_currentRowChanged(int row) {
+  if (row < 0 || row >= ui->stackedWidget->count()) return;
+  ui->stackedWidget->setCurrentIndex(row);
+  const QStringList titles = {
+      tr("基础界面"), tr("终端交互"), tr("协议解析"), tr("可视化配置")};
+  if (row < titles.size()) ui->pageTitleLabel->setText(titles.at(row));
+
+  // 切到可视化页时刷新数据源列表
+  if (row == 3) refreshVizSources();
+}
+
+// ============================================================
+// 基础页：端口/收发
+// ============================================================
 void serial::refreshPortList() {
   QStringList serialStrList = worker_->scanPorts();
   ui->portComboBox->clear();
@@ -181,7 +377,6 @@ void serial::refreshPortList() {
 
 void serial::updateConnectionStatus(bool connected) {
   if (connected) {
-    // 使用中性的通用色，在系统原生亮/暗风格下都可读
     ui->statusIndicator->setStyleSheet("background-color: #2ea043; border-radius: 5px;");
     ui->connectionStatusLabel->setText(tr("Connected"));
     QString portInfo = QString("%1 @ %2 baud")
@@ -195,6 +390,10 @@ void serial::updateConnectionStatus(bool connected) {
     ui->advancedSettingsBtn->setEnabled(false);
 
     ui->openPortButton->setText(tr("Close Port"));
+
+    // 终端页状态
+    ui->termStatusLabel->setText(tr("● Connected"));
+    ui->termStatusLabel->setStyleSheet("color: #2ea043;");
   } else {
     ui->statusIndicator->setStyleSheet("background-color: #d1242f; border-radius: 5px;");
     ui->connectionStatusLabel->setText(tr("Disconnected"));
@@ -206,6 +405,10 @@ void serial::updateConnectionStatus(bool connected) {
     ui->advancedSettingsBtn->setEnabled(true);
 
     ui->openPortButton->setText(tr("Open Port"));
+
+    // 终端页状态
+    ui->termStatusLabel->setText(tr("● Disconnected"));
+    ui->termStatusLabel->setStyleSheet("color: #d1242f;");
 
     // 停止定时发送
     if (send_timer_->isActive()) {
@@ -240,6 +443,10 @@ void serial::appendReceiveData(const QString &text) {
   }
 }
 
+void serial::appendRecv(const QString &text) {
+  appendReceiveData(text);
+}
+
 void serial::on_refreshButton_clicked() {
   refreshPortList();
 }
@@ -260,7 +467,6 @@ void serial::on_openPortButton_clicked() {
       appendReceiveData(tr("[System] Port opened successfully: %1").arg(ui->portComboBox->currentText()));
     } else {
       appendReceiveData(tr("[System] Failed to open port: %1").arg(ui->portComboBox->currentText()));
-      // Show detailed error (permission, etc.) in the receive panel
       QString errMsg = worker_->lastError();
       if (!errMsg.isEmpty()) {
           appendReceiveData(errMsg);
@@ -325,7 +531,6 @@ void serial::on_timerCheckBox_stateChanged(int state) {
   }
 }
 
-// 处理经 EventBus 到达的数据（由 SerialWorker::dataReceived 触发）
 void serial::readSerialData(const QByteArray &data) {
   if (data.isEmpty()) return;
 
@@ -359,31 +564,22 @@ void serial::on_clearRecvButton_clicked() {
 }
 
 void serial::on_advancedSettingsBtn_clicked() {
-  // 创建模态对话框，传入 SerialWorker 的配置引用与可用端口列表
   QStringList availablePorts = worker_->scanPorts();
   setting param(worker_->config(), availablePorts, this);
 
-  // 保留标题栏/关闭按钮，去掉最小化/最大化
   param.setWindowFlags(Qt::Dialog | Qt::CustomizeWindowHint | Qt::WindowTitleHint | Qt::WindowCloseButtonHint);
-
-  // 应用级模态：阻塞整个应用的所有窗口，焦点不会穿透到主窗口
   param.setModal(true);
   param.setWindowModality(Qt::ApplicationModal);
-
-  // 调整为实际内容大小
   param.adjustSize();
 
-  // 居中到主窗口（this 是顶层窗口，parentWidget() 为 null，需以主窗口几何为中心）
   QRect parentGeometry = this->geometry();
   QSize dlgSize = param.size();
-  // 防止对话框比主窗口还大导致偏移越界
   int x = parentGeometry.center().x() - dlgSize.width() / 2;
   int y = parentGeometry.center().y() - dlgSize.height() / 2;
   x = qMax(x, parentGeometry.left());
   y = qMax(y, parentGeometry.top());
   param.move(x, y);
 
-  // 模态执行（accept() 会把对话框选择写回 worker_->config()）
   param.exec();
 
   const sd::PortConfig& cfg = worker_->config();
@@ -437,5 +633,336 @@ void serial::on_saveLogButton_clicked() {
     appendReceiveData(tr("[System] Log saved to: %1").arg(fileName));
   } else {
     appendReceiveData(tr("[System] Failed to save log file"));
+  }
+}
+
+// ============================================================
+// 终端页
+// ============================================================
+void serial::on_termSendButton_clicked() {
+  onTermInputReturnPressed();
+}
+
+void serial::onTermInputReturnPressed() {
+  QString cmd = ui->termInput->text();
+  ui->termInput->clear();
+  if (cmd.isEmpty()) return;
+
+  // 命令历史
+  cmdHistory_.append(cmd);
+  cmdHistoryPos_ = -1;
+
+  // 本地回显
+  if (ui->termLocalEchoCheckBox->isChecked()) {
+    ui->termOutput->appendPlainText(QString("%1$ %2").arg(ui->termPromptLabel->text(), cmd));
+  }
+
+  QByteArray bytes = cmd.toLatin1();
+  if (ui->termCrlfCheckBox->isChecked()) {
+    bytes += "\r\n";
+  } else {
+    bytes += "\n";
+  }
+  if (is_the_serial_port_open_) {
+    worker_->send(bytes);
+  } else {
+    ui->termOutput->appendPlainText(tr("[Terminal] Port not open"));
+  }
+}
+
+void serial::on_termLocalEchoCheckBox_stateChanged(int) {
+  // 本地回显由发送时判断，无需额外处理
+}
+
+// ============================================================
+// 协议解析页
+// ============================================================
+sd::FieldType serial::comboToFieldType(const QString &txt) const {
+  if (txt == "uint8")  return sd::FieldType::U8;
+  if (txt == "uint16") return sd::FieldType::U16;
+  if (txt == "uint32") return sd::FieldType::U32;
+  if (txt == "int8")   return sd::FieldType::I8;
+  if (txt == "int16")  return sd::FieldType::I16;
+  if (txt == "int32")  return sd::FieldType::I32;
+  if (txt == "float")  return sd::FieldType::F32;
+  if (txt == "double") return sd::FieldType::F64;
+  if (txt == "bool")   return sd::FieldType::Bool;
+  return sd::FieldType::F32;
+}
+
+QString serial::fieldTypeToCombo(sd::FieldType t) const {
+  switch (t) {
+    case sd::FieldType::U8:  return "uint8";
+    case sd::FieldType::U16: return "uint16";
+    case sd::FieldType::U32: return "uint32";
+    case sd::FieldType::I8:  return "int8";
+    case sd::FieldType::I16: return "int16";
+    case sd::FieldType::I32: return "int32";
+    case sd::FieldType::F32: return "float";
+    case sd::FieldType::F64: return "double";
+    case sd::FieldType::Bool:return "bool";
+  }
+  return "float";
+}
+
+void serial::addProtoRow(const sd::FieldDesc &fd) {
+  int row = ui->protoTable->rowCount();
+  ui->protoTable->insertRow(row);
+
+  // 勾选列（进入字段池）
+  QTableWidgetItem *sel = new QTableWidgetItem();
+  sel->setCheckState(fd.isPadding ? Qt::Unchecked : Qt::Checked);
+  sel->setFlags(Qt::ItemIsEnabled | Qt::ItemIsUserCheckable);
+  ui->protoTable->setItem(row, 0, sel);
+
+  // 名称
+  QTableWidgetItem *name = new QTableWidgetItem(QString::fromStdString(fd.name));
+  ui->protoTable->setItem(row, 1, name);
+
+  // 类型
+  QTableWidgetItem *type = new QTableWidgetItem(
+      fd.isPadding ? "padding" : fieldTypeToCombo(fd.type));
+  ui->protoTable->setItem(row, 2, type);
+
+  // 长度
+  int len = fd.byteLength > 0 ? fd.byteLength : sd::fieldTypeBytes(fd.type);
+  QTableWidgetItem *ln = new QTableWidgetItem(QString("%1B").arg(len));
+  ui->protoTable->setItem(row, 3, ln);
+}
+
+void serial::rebuildProtoTable(const std::vector<sd::FieldDesc> &fields) {
+  ui->protoTable->setRowCount(0);
+  for (const auto &f : fields) addProtoRow(f);
+}
+
+void serial::on_addFieldButton_clicked() {
+  sd::FieldDesc fd;
+  fd.name = QString("field%1").arg(ui->protoTable->rowCount() + 1).toStdString();
+  fd.type = sd::FieldType::F32;
+  fd.byteLength = -1; // 自动
+  protoFields_.append(fd);
+  addProtoRow(fd);
+}
+
+void serial::on_removeFieldButton_clicked() {
+  int row = ui->protoTable->currentRow();
+  if (row < 0) return;
+  ui->protoTable->removeRow(row);
+  if (row < protoFields_.size()) protoFields_.remove(row);
+}
+
+void serial::on_protoTable_itemSelectionChanged() {
+  int row = ui->protoTable->currentRow();
+  if (row < 0 || row >= protoFields_.size()) return;
+  const sd::FieldDesc &fd = protoFields_.at(row);
+
+  ui->fieldNameEdit->setText(QString::fromStdString(fd.name));
+  ui->fieldTypeCombo->setCurrentText(fieldTypeToCombo(fd.type));
+  if (fd.isPadding) ui->fieldTypeCombo->setCurrentText("padding");
+  ui->fieldLengthSpin->setValue(fd.byteLength > 0 ? fd.byteLength : sd::fieldTypeBytes(fd.type));
+  ui->fieldScaleSpin->setValue(fd.scale);
+  ui->fieldOffsetSpin->setValue(fd.offset);
+  ui->fieldUnitEdit->setText(QString::fromStdString(fd.unit));
+  ui->fieldPoolCheck->setChecked(!fd.isPadding);
+}
+
+void serial::on_applyFieldButton_clicked() {
+  int row = ui->protoTable->currentRow();
+  if (row < 0 || row >= protoFields_.size()) return;
+  sd::FieldDesc &fd = protoFields_[row];
+
+  fd.name = ui->fieldNameEdit->text().toStdString();
+  QString typeTxt = ui->fieldTypeCombo->currentText();
+  fd.isPadding = (typeTxt == "padding");
+  if (!fd.isPadding) {
+    fd.type = comboToFieldType(typeTxt);
+    fd.byteLength = ui->fieldLengthSpin->value();
+  } else {
+    fd.byteLength = ui->fieldLengthSpin->value();
+  }
+  fd.scale = ui->fieldScaleSpin->value();
+  fd.offset = ui->fieldOffsetSpin->value();
+  fd.unit = ui->fieldUnitEdit->text().toStdString();
+
+  // 回写表格
+  ui->protoTable->item(row, 1)->setText(QString::fromStdString(fd.name));
+  ui->protoTable->item(row, 2)->setText(typeTxt);
+  int len = fd.byteLength > 0 ? fd.byteLength : sd::fieldTypeBytes(fd.type);
+  ui->protoTable->item(row, 3)->setText(QString("%1B").arg(len));
+  ui->protoTable->item(row, 0)->setCheckState(fd.isPadding ? Qt::Unchecked : Qt::Checked);
+}
+
+void serial::collectSchemaFromTable() {
+  protoFields_.clear();
+  for (int r = 0; r < ui->protoTable->rowCount(); ++r) {
+    sd::FieldDesc fd;
+    fd.name = ui->protoTable->item(r, 1)->text().toStdString();
+    QString typeTxt = ui->protoTable->item(r, 2)->text();
+    fd.isPadding = (typeTxt == "padding");
+    if (!fd.isPadding) fd.type = comboToFieldType(typeTxt);
+    // 长度从表格文本解析（去掉 "B"）
+    QString lenTxt = ui->protoTable->item(r, 3)->text();
+    lenTxt.chop(1);
+    bool ok = false;
+    int len = lenTxt.toInt(&ok);
+    int autoLen = fd.isPadding ? 1 : sd::fieldTypeBytes(fd.type);
+    fd.byteLength = (ok && len > 0) ? len : autoLen;
+    protoFields_.append(fd);
+  }
+}
+
+void serial::on_applySchemaButton_clicked() {
+  collectSchemaFromTable();
+
+  sd::ProtocolSchema schema;
+  schema.name = ui->protoNameEdit->text().toStdString();
+  schema.defaultBigEndian = (ui->protoEndianCombo->currentText() == "大端");
+  schema.fields.clear();
+  for (const auto &fd : protoFields_) {
+    schema.fields.push_back(fd);
+  }
+
+  if (schema.fields.empty()) {
+    QMessageBox::warning(this, tr("Protocol"), tr("No fields defined yet."));
+    return;
+  }
+
+  if (worker_->applyProtocolSchema(schema)) {
+    appendReceiveData(tr("[Protocol] Applied schema \"%1\" (%2 fields, %3 bytes/frame)")
+        .arg(QString::fromStdString(schema.name))
+        .arg(schema.fields.size())
+        .arg(schema.totalBytes()));
+    refreshVizSources();
+  } else {
+    appendReceiveData(tr("[Protocol] Failed to apply schema"));
+  }
+}
+
+// ============================================================
+// 可视化页
+// ============================================================
+void serial::refreshVizSources() {
+  ui->vizSourceList->clear();
+  ui->vizProtoLabel->setText(tr("数据源来自协议: %1")
+      .arg(QString::fromStdString(worker_->fieldPool().protocolName())));
+
+  const auto &pool = worker_->fieldPool();
+  if (!pool.hasSchema()) {
+    ui->vizSourceHint->setText(tr("尚未配置协议，请先到「协议解析」页应用协议"));
+    return;
+  }
+  ui->vizSourceHint->setText(tr("勾选数据源 + 选类型 → 新建视图"));
+
+  for (const auto &s : pool.sources()) {
+    QListWidgetItem *item = new QListWidgetItem(
+        QString("%1  [%2]").arg(QString::fromStdString(s.name),
+                                QString::fromStdString(s.unit)));
+    item->setData(Qt::UserRole, QString::fromStdString(s.name));
+    item->setFlags(Qt::ItemIsEnabled | Qt::ItemIsUserCheckable | Qt::ItemIsSelectable);
+    item->setCheckState(Qt::Unchecked);
+    ui->vizSourceList->addItem(item);
+  }
+}
+
+void serial::on_vizTypeCombo_currentIndexChanged(int) {
+  // 类型切换即互斥——已有视图保留，新建视图用新类型
+}
+
+void serial::addVizViewCard(const ViewInstanceUi &vi) {
+  // 卡片框架
+  QFrame *card = new QFrame();
+  card->setFrameShape(QFrame::StyledPanel);
+  card->setObjectName("vizCard");
+  card->setProperty("viewId", vi.viewId);
+
+  QVBoxLayout *v = new QVBoxLayout(card);
+  v->setContentsMargins(8, 8, 8, 8);
+  v->setSpacing(6);
+
+  // 标题行：类型 + 字段 + 关闭按钮
+  QWidget *head = new QWidget();
+  QHBoxLayout *hh = new QHBoxLayout(head);
+  hh->setContentsMargins(0, 0, 0, 0);
+  QLabel *title = new QLabel(QString("%1 · %2").arg(vi.title, vi.typeName));
+  title->setStyleSheet("font-weight: bold; color: #7aa2f7;");
+  QLabel *fieldsLabel = new QLabel(vi.fields.join(" + "));
+  fieldsLabel->setStyleSheet("color: #8090a0;");
+  hh->addWidget(title);
+  hh->addWidget(fieldsLabel);
+  hh->addStretch();
+  QPushButton *closeBtn = new QPushButton("✕");
+  closeBtn->setFixedSize(22, 22);
+  closeBtn->setCursor(Qt::PointingHandCursor);
+  connect(closeBtn, &QPushButton::clicked, this, [this, vi]() {
+      removeVizView(vi.viewId);
+  });
+  hh->addWidget(closeBtn);
+  v->addWidget(head);
+
+  // 绘制区
+  VizPlotWidget *plot = new VizPlotWidget(vi.typeName, vi.fields);
+  plot->pushEmpty(); // 初始演示曲线
+  plot->setMinimumHeight(140);
+  v->addWidget(plot);
+
+  ui->vizCanvasContainer->layout()->addWidget(card);
+}
+
+void serial::rebuildVizViews() {
+  // 清空容器
+  QLayout *lay = ui->vizCanvasContainer->layout();
+  while (QLayoutItem *it = lay->takeAt(0)) {
+    if (QWidget *w = it->widget()) w->deleteLater();
+    delete it;
+  }
+  for (const auto &vi : vizViews_) addVizViewCard(vi);
+}
+
+void serial::on_addViewButton_clicked() {
+  // 收集勾选的数据源
+  QStringList selected;
+  for (int i = 0; i < ui->vizSourceList->count(); ++i) {
+    QListWidgetItem *item = ui->vizSourceList->item(i);
+    if (item->checkState() == Qt::Checked) {
+      selected << item->data(Qt::UserRole).toString();
+    }
+  }
+  if (selected.isEmpty()) {
+    QMessageBox::information(this, tr("Visualization"), tr("请先在左侧勾选至少一个数据源"));
+    return;
+  }
+
+  QString typeName = ui->vizTypeCombo->currentText(); // 波形图 / 3D姿态
+
+  ViewInstanceUi vi;
+  vi.viewId = QString("view-%1").arg(vizViews_.size() + 1);
+  vi.typeName = typeName;
+  vi.title = typeName;
+  vi.fields = selected;
+  vizViews_.append(vi);
+
+  addVizViewCard(vi);
+}
+
+void serial::removeVizView(const QString &viewId) {
+  for (int i = 0; i < vizViews_.size(); ++i) {
+    if (vizViews_.at(i).viewId == viewId) {
+      vizViews_.remove(i);
+      break;
+    }
+  }
+  rebuildVizViews();
+}
+
+void serial::onFrameReceived(const sd::Frame &frame) {
+  // 把帧数据推给所有视图卡片
+  QLayout *lay = ui->vizCanvasContainer->layout();
+  for (int i = 0; i < lay->count(); ++i) {
+    QWidget *w = lay->itemAt(i)->widget();
+    if (QFrame *card = qobject_cast<QFrame*>(w)) {
+      // 找到卡片里的绘制区
+      QList<VizPlotWidget*> plots = card->findChildren<VizPlotWidget*>();
+      for (VizPlotWidget *p : plots) p->pushSample(frame);
+    }
   }
 }

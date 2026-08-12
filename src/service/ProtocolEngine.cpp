@@ -24,6 +24,12 @@ bool ProtocolEngine::select(const std::string& name) {
     return true;
 }
 
+bool ProtocolEngine::applySchema(const sd::ProtocolSchema& schema) {
+    if (schema.name.empty() || schema.fields.empty()) return false;
+    registry_.registerSchema(schema);
+    return select(schema.name);
+}
+
 std::string ProtocolEngine::current() const {
     return proto_ ? proto_->name() : std::string();
 }

@@ -13,7 +13,7 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
-find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets SerialPort)
+find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets SerialPort Network)
 
 # ============================================================
 # 核心层（src/core）: 纯 C++，不依赖 Qt。
@@ -85,7 +85,6 @@ set(PROJECT_SOURCES
     uart_setting.cpp
     thememanager.cpp
     languagemanager.cpp
-    src/ui/SerialWorker.cpp
     uart_interaction.h
     uart_setting.h
     thememanager.h
@@ -94,6 +93,44 @@ set(PROJECT_SOURCES
     uart_setting.ui
     res.qrc
 )
+
+# ============================================================
+# UI 适配层（src/ui）: SerialWorker 封装核心到 Qt 信号。
+# 抽成独立库，供各宿主复用。仅依赖 Qt Core（无 Widgets）。
+# ============================================================
+add_library(sd_ui STATIC
+    src/ui/SerialWorker.cpp
+    src/ui/SerialWorker.hpp
+)
+target_include_directories(sd_ui PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
+target_link_libraries(sd_ui PUBLIC sd_core sd_service sd_io Qt6::Core Qt6::SerialPort)
+target_compile_features(sd_ui PUBLIC cxx_std_17)
+
+# ============================================================
+# Launcher 层（src/launcher）: 统一入口的 UI 模式管理 + 各宿主运行逻辑。
+# 有图形环境时复用 QApplication；无图形用 QCoreApplication。
+# ============================================================
+find_package(Qt6 QUIET COMPONENTS Quick Qml)
+add_library(sd_launcher STATIC
+    src/launcher/UiMode.cpp
+    src/launcher/UiMode.hpp
+    src/launcher/UiModePicker.cpp
+    src/launcher/UiModePicker.hpp
+    src/launcher/UiRunners.hpp
+    src/launcher/run_tui.cpp
+    src/launcher/run_web.cpp
+    src/launcher/run_qml.cpp
+)
+target_include_directories(sd_launcher PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
+target_link_libraries(sd_launcher PUBLIC sd_ui Qt6::Core Qt6::Gui Qt6::Widgets Qt6::Network)
+target_compile_features(sd_launcher PUBLIC cxx_std_17)
+
+# 有 Qt Quick/Qml 时启用 QML 宿主（HAVE_QML），并链接 QML 资源。
+if(Qt6Quick_FOUND AND Qt6Qml_FOUND)
+    target_compile_definitions(sd_launcher PRIVATE HAVE_QML)
+    target_sources(sd_launcher PRIVATE src/qml/qml_resources.qrc)
+    target_link_libraries(sd_launcher PUBLIC Qt6::Quick Qt6::Qml)
+endif()
 
 if(WIN32)
     add_executable(serial-debug WIN32 ${PROJECT_SOURCES} logo.rc)
@@ -128,10 +165,13 @@ target_link_libraries(serial-debug PRIVATE
     Qt6::Gui
     Qt6::Widgets
     Qt6::SerialPort
+    Qt6::Network
     sd_core
     sd_service
     sd_plugin
     sd_io
+    sd_ui
+    sd_launcher
 )
 
 target_compile_definitions(serial-debug PRIVATE

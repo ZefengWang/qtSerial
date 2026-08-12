@@ -14,6 +14,10 @@ class RingBuffer;
 class Session;
 class EventBus;
 class SteadyClock;
+class ProtocolEngine;
+class FieldPool;
+struct ProtocolSchema;
+struct Frame;
 } // namespace sd
 
 // ============================================================
@@ -57,11 +61,25 @@ public:
     // 十六进制字符串 -> 字节数组（纯工具，供发送框 HEX 模式使用）。
     static QByteArray hexStringToByteArray(const QString& hex);
 
+    // ------ 协议解析 / 可视化接入 ------
+    // 应用一个可配置二进制协议 schema：注册到协议引擎并选中，同时写入字段池。
+    // 返回是否成功（schema 需非空且含字段）。
+    bool applyProtocolSchema(const sd::ProtocolSchema& schema);
+
+    // 访问字段池（可视化配置界面读取可选数据源）。
+    sd::FieldPool& fieldPool();
+    const sd::FieldPool& fieldPool() const;
+
+    // 协议引擎访问（供协议化发送等）。
+    sd::ProtocolEngine& protocolEngine();
+
 signals:
     // 收到一帧数据（已按攒批阈值切块）。UI 线程发出。
     void dataReceived(const QByteArray& data);
     // 连接状态变化（false=关闭，true=打开）。
     void connectionChanged(bool open);
+    // 协议解析出一帧（帧数据到达字段池后发出，供可视化视图刷新）。
+    void frameReceived(const sd::Frame& frame);
 
 private:
     void poll();
@@ -71,6 +89,8 @@ private:
     sd::RingBuffer*   buffer_ = nullptr;
     sd::Session*      session_ = nullptr;
     sd::EventBus*     bus_ = nullptr;
+    sd::ProtocolEngine* protoEngine_ = nullptr;
+    sd::FieldPool*    fieldPool_ = nullptr;
     QTimer            pollTimer_;
     sd::PortConfig*   config_ = nullptr;
     bool              open_ = false;

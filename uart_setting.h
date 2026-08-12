@@ -23,6 +23,9 @@ public:
                      QWidget *parent = nullptr);
     ~setting();
 
+private slots:
+    void on_restartUiButton_clicked();
+
 protected:
     void accept() override;
 

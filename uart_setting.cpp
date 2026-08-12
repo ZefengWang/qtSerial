@@ -1,6 +1,8 @@
 #include "uart_setting.h"
 #include "ui_uart_setting.h"
+#include "launcher/UiMode.hpp"
 #include <QDebug>
+#include <QMessageBox>
 
 setting::setting(sd::PortConfig& cfg,
                  const QStringList& availablePorts,
@@ -50,6 +52,36 @@ setting::setting(sd::PortConfig& cfg,
   if (cfg_.flowControl >= 0 && cfg_.flowControl <= 2) {
     ui->flowctrComboBox->setCurrentIndex(cfg_.flowControl);
   }
+
+  // UI 模式下拉框：列出可选宿主，当前已保存模式选中。
+  ui->uiModeComboBox->clear();
+  ui->uiModeComboBox->addItem(ui_mode::displayName(UiMode::QtWidgets), QStringLiteral("qt"));
+  ui->uiModeComboBox->addItem(ui_mode::displayName(UiMode::TUI),       QStringLiteral("tui"));
+  ui->uiModeComboBox->addItem(ui_mode::displayName(UiMode::Web),       QStringLiteral("web"));
+  if (ui_mode::qmlAvailable())
+    ui->uiModeComboBox->addItem(ui_mode::displayName(UiMode::QML),     QStringLiteral("qml"));
+
+  UiMode current = ui_mode::savedMode();
+  if (current == UiMode::Auto) current = UiMode::QtWidgets;
+  int curIdx = ui->uiModeComboBox->findData(ui_mode::toString(current));
+  if (curIdx >= 0) ui->uiModeComboBox->setCurrentIndex(curIdx);
+}
+
+// 切换 UI 模式并重启：保存新模式到配置，提示后重启进程。
+void setting::on_restartUiButton_clicked() {
+  const QString modeStr = ui->uiModeComboBox->currentData().toString();
+  UiMode target = ui_mode::fromString(modeStr);
+  if (target == UiMode::Auto) return;
+
+  const QString targetName = ui_mode::displayName(target);
+  QMessageBox::StandardButton r = QMessageBox::question(
+      this, tr("切换界面模式"),
+      tr("将界面切换为「%1」，软件需要重启后生效。\n是否立即重启？").arg(targetName),
+      QMessageBox::Yes | QMessageBox::No, QMessageBox::Yes);
+  if (r != QMessageBox::Yes) return;
+
+  ui_mode::saveMode(target);
+  ui_mode::restartWithMode(target);
 }
 
 setting::~setting(){

@@ -72,8 +72,8 @@ if(Qt6_FOUND)
         ${CMAKE_SOURCE_DIR}/src
     )
     target_link_libraries(gui_system_test PRIVATE
-        Qt6::Test Qt6::Gui Qt6::Widgets Qt6::SerialPort
-        sd_core sd_service sd_io
+        Qt6::Test Qt6::Gui Qt6::Widgets Qt6::SerialPort Qt6::Network
+        sd_core sd_service sd_io sd_ui sd_launcher
     )
     target_compile_features(gui_system_test PRIVATE cxx_std_17)
     add_test(NAME gui_system_test COMMAND gui_system_test)

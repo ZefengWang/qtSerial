@@ -3,6 +3,7 @@
 
 #include "../protocol/IProtocol.hpp"
 #include "../protocol/ProtocolRegistry.hpp"
+#include "../core/FieldSchema.hpp"
 #include "EventBus.hpp"
 
 #include <cstddef>
@@ -31,6 +32,10 @@ public:
 
     // 选择并加载协议（按名）。成功返回 true；名字未注册返回 false，保持原协议。
     bool select(const std::string& name);
+
+    // 注册并加载一个"可配置二进制协议"（协议解析界面配置完成时调用）。
+    // 按 schema.name 注册到内部注册表并立即选中。成功返回 true。
+    bool applySchema(const sd::ProtocolSchema& schema);
 
     // 当前协议名（未加载返回空串）。
     std::string current() const;

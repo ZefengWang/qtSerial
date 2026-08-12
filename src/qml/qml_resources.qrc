@@ -1,0 +1,9 @@
+<RCC>
+    <qresource prefix="/qml">
+        <file>Main.qml</file>
+        <file>pages/BasicPage.qml</file>
+        <file>pages/TerminalPage.qml</file>
+        <file>pages/ProtocolPage.qml</file>
+        <file>pages/VizPage.qml</file>
+    </qresource>
+</RCC>

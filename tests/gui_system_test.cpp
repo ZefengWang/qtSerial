@@ -10,6 +10,8 @@
 #include <QTimer>
 
 #include "../uart_interaction.h"
+#include "../uart_setting.h"
+#include "launcher/UiMode.hpp"
 
 class GuiSystemTest : public QObject {
     Q_OBJECT
@@ -22,6 +24,8 @@ private slots:
     void buttonsClickable();
     // 4) 端口下拉框存在且可交互
     void portComboWorks();
+    // 5) 设置对话框含 UI 模式切换（下拉框填充 + 模式映射）
+    void settingUiModeWorks();
 };
 
 void GuiSystemTest::mainWindowConstructs() {
@@ -75,6 +79,29 @@ void GuiSystemTest::portComboWorks() {
     auto* combo = w.findChild<QComboBox*>("portComboBox");
     QVERIFY(combo != nullptr);
     QTest::qWait(30);
+}
+
+void GuiSystemTest::settingUiModeWorks() {
+    // 构建设置对话框（离线 cfg + 空端口列表）。
+    sd::PortConfig cfg;
+    setting dlg(cfg, QStringList());
+
+    // 断言 UI 模式下拉框存在且填充了宿主选项。
+    QComboBox* combo = dlg.findChild<QComboBox*>("uiModeComboBox");
+    QVERIFY(combo != nullptr);
+    QVERIFY(combo->count() >= 3); // qt / tui / web 至少存在
+
+    // 模式映射往返一致。
+    const UiMode m1 = ui_mode::fromString(ui_mode::toString(UiMode::QtWidgets));
+    const UiMode m2 = ui_mode::fromString(ui_mode::toString(UiMode::TUI));
+    const UiMode m3 = ui_mode::fromString(ui_mode::toString(UiMode::Web));
+    QCOMPARE(m1, UiMode::QtWidgets);
+    QCOMPARE(m2, UiMode::TUI);
+    QCOMPARE(m3, UiMode::Web);
+
+    // UI 模式变更后，重启按钮存在。
+    QPushButton* restartBtn = dlg.findChild<QPushButton*>("restartUiButton");
+    QVERIFY(restartBtn != nullptr);
 }
 
 QTEST_MAIN(GuiSystemTest)
