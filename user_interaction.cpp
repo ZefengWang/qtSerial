@@ -169,7 +169,9 @@ public:
             series_.append(QVector<double>());
             phase_.append(0.0);
         }
-        setMinimumHeight(140);
+        setMinimumHeight(160);
+        // 默认占满水平/垂直空间；在卡片布局中由 addWidget(plot,1) 进一步拉伸。
+        setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     }
 
     void pushSample(const sd::Frame &frame) {
@@ -1253,10 +1255,10 @@ void serial::addVizViewCard(const ViewInstanceUi &vi) {
   card->setProperty("viewId", vi.viewId);
 
   QVBoxLayout *v = new QVBoxLayout(card);
-  v->setContentsMargins(8, 8, 8, 8);
-  v->setSpacing(6);
+  v->setContentsMargins(8, 6, 8, 6);
+  v->setSpacing(4);
 
-  // 标题行：紧凑，["视图A · 波形"] + "数据源: f1 + f2" + 关闭按钮（右）
+  // 标题行：仅占一行（固定最大高度 22px），["视图A · 波形"] + "数据源: f1 + f2" + 关闭按钮（右）
   QWidget *head = new QWidget();
   QHBoxLayout *hh = new QHBoxLayout(head);
   hh->setContentsMargins(2, 0, 2, 0);
@@ -1280,16 +1282,20 @@ void serial::addVizViewCard(const ViewInstanceUi &vi) {
       removeVizView(vi.viewId);
   });
   hh->addWidget(closeBtn);
+  // 标题行固定只占一行，不高不伸缩
+  head->setFixedHeight(22);
+  head->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
   v->addWidget(head);
 
-  // 绘制区
+  // 绘制区：占满卡片剩余全部空间（可伸缩），黑色 chart 区域随窗口/容器缩放
   VizPlotWidget *plot = new VizPlotWidget(vi.typeName, vi.fields);
   // 用动态属性标记本控件类型：VizPlotWidget 是局部类、无 Q_OBJECT，
   // 新版 Qt 不允许对其 findChildren<custom*>()/qobject_cast，故用属性标记 + static_cast。
   plot->setProperty("sdVizPlot", true);
   plot->pushEmpty(); // 初始演示曲线
-  plot->setMinimumHeight(140);
-  v->addWidget(plot);
+  plot->setMinimumHeight(160);
+  plot->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+  v->addWidget(plot, 1); // stretch=1：占据所有剩余垂直空间
 
   // 底部图例行（对齐原型 legend-line）：彩色小方块 + 字段名 + 类型标注
   static const QString kLegendPalette[] = {
@@ -1299,6 +1305,9 @@ void serial::addVizViewCard(const ViewInstanceUi &vi) {
   QHBoxLayout *lg = new QHBoxLayout(legend);
   lg->setContentsMargins(2, 0, 2, 0);
   lg->setSpacing(10);
+  // 图例只占一小条：固定高度，不高不伸缩
+  legend->setFixedHeight(20);
+  legend->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
   for (int i = 0; i < vi.fields.size(); ++i) {
       QWidget *ld = new QWidget();
       QHBoxLayout *ldl = new QHBoxLayout(ld);

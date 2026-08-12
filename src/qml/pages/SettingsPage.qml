@@ -152,8 +152,9 @@ Column {
                         ComboBox { id: flowCombo; model: ["None", "RTS-CTS", "XON-XOFF"]; currentIndex: 0; Layout.fillWidth: true; implicitWidth: 220; background: Rectangle { color: "#12121a"; radius: 4; border.color: "#3a3f5a"; border.width: 1 } }
                     }
 
-                    Row {
+                    RowLayout {
                         spacing: 8
+                        Layout.fillWidth: true
                         Layout.alignment: Qt.AlignRight
                         Button {
                             text: "应用"

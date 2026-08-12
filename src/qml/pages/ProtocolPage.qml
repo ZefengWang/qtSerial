@@ -5,11 +5,11 @@ import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
 
-Column {
+ColumnLayout {
     id: root
     anchors.fill: parent
+    anchors.margins: 16
     spacing: 12
-    padding: 16
 
     Label {
         text: "协议解析（定义帧结构 → 产出字段作为数据源）"
@@ -18,19 +18,20 @@ Column {
         font.bold: true
     }
 
-    // Field list
-    Row {
+    // Field list + editing
+    RowLayout {
         spacing: 12
-        anchors.left: parent.left
-        anchors.right: parent.right
         Layout.fillWidth: true
+        Layout.fillHeight: true
 
         // Left: field list
-        Column {
-            width: parent.width * 0.6
+        ColumnLayout {
+            Layout.preferredWidth: root.width * 0.6
+            Layout.fillWidth: true
+            Layout.fillHeight: true
             spacing: 8
 
-            Row {
+            RowLayout {
                 spacing: 8
                 Label { text: "字段列表"; color: "#c0caf5"; font.bold: true }
                 Button {
@@ -43,6 +44,7 @@ Column {
                     onClicked: removeField()
                     background: Rectangle { color: "#f7768e"; radius: 6 }
                 }
+                Item { Layout.fillWidth: true }
             }
 
             Rectangle {
@@ -50,8 +52,8 @@ Column {
                 border.color: "#3a3f5a"
                 border.width: 1
                 radius: 8
-                height: 300
                 Layout.fillWidth: true
+                Layout.fillHeight: true
 
                 ListView {
                     id: fieldList
@@ -64,11 +66,10 @@ Column {
                         color: model.selected ? "#2f3346" : "transparent"
                         radius: 4
 
-                        Row {
+                        RowLayout {
                             anchors.fill: parent
-                            anchors.margins: { left: 8, right: 8 }
+                            anchors.margins: 8
                             spacing: 8
-                            verticalAlignment: Row.AlignVCenter
 
                             Text { text: model.name; color: "#c0caf5" }
                             Text {
@@ -100,8 +101,10 @@ Column {
         }
 
         // Right: field editing
-        Column {
-            width: parent.width * 0.4
+        ColumnLayout {
+            Layout.preferredWidth: root.width * 0.4
+            Layout.fillWidth: true
+            Layout.fillHeight: true
             spacing: 8
 
             Label {
@@ -110,29 +113,31 @@ Column {
                 font.bold: true
             }
 
-            Grid {
+            GridLayout {
                 columns: 2
-                spacing: 8
+                columnSpacing: 8
+                rowSpacing: 8
+                Layout.fillWidth: true
 
                 Label { text: "名称"; color: "#c0caf5" }
                 TextField {
                     id: nameInput
                     text: selectedIndex >= 0 ? fields[selectedIndex].name : ""
-                    width: 160
+                    Layout.fillWidth: true
                 }
 
                 Label { text: "类型"; color: "#c0caf5" }
                 ComboBox {
                     id: typeCombo
                     model: ["uint8", "uint16", "uint32", "int8", "int16", "int32", "float", "double", "bool", "padding"]
-                    width: 160
+                    Layout.fillWidth: true
                 }
 
                 Label { text: "长度(字节)"; color: "#c0caf5" }
                 TextField {
                     id: lengthInput
                     text: selectedIndex >= 0 ? fields[selectedIndex].length : "4"
-                    width: 160
+                    Layout.fillWidth: true
                     validator: IntValidator { bottom: 1; top: 128 }
                 }
 
@@ -140,21 +145,25 @@ Column {
                 ComboBox {
                     id: endianCombo
                     model: ["小端", "大端"]
-                    width: 160
+                    Layout.fillWidth: true
                 }
             }
 
             Button {
                 text: "应用字段"
+                Layout.fillWidth: true
                 onClicked: applyField()
                 background: Rectangle { color: "#9ece6a"; radius: 6 }
             }
 
             Button {
                 text: "应用协议并产出字段池"
+                Layout.fillWidth: true
                 onClicked: applySchema()
                 background: Rectangle { color: "#7aa2f7"; radius: 6 }
             }
+
+            Item { Layout.fillHeight: true }
         }
     }
 
@@ -193,7 +202,7 @@ Column {
     }
 
     function applySchema() {
-        // 把字段构造成 ProtocolSchema 传给 SerialWorker
+        // 把字段构造成 JSON，交给 SerialWorker::applySchemaJson（C++ 桥接）。
         var schema = {
             name: "cust",
             fields: []
@@ -201,10 +210,6 @@ Column {
         for (var i = 0; i < fields.length; i++) {
             schema.fields.push(fields[i])
         }
-        // SerialWorker::applyProtocolSchema 在 C++ 侧
-        // QML 无法直接构造 sd::ProtocolSchema（C++ 结构体），
-        // 这里通过暴露的 Q_INVOKABLE 或数据桥完成。
-        // 简化：调用暴露到 QML 的 C++ 方法。
         var ok = serialWorker.applySchemaJson(JSON.stringify(schema))
         if (!ok) {
             console.warn("applySchema failed")

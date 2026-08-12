@@ -6,6 +6,7 @@
 #include <QString>
 #include <QStringList>
 #include <QTimer>
+#include <QVariantMap>
 
 namespace sd {
 struct PortConfig;
@@ -36,24 +37,26 @@ struct Frame;
 // ============================================================
 class SerialWorker : public QObject {
     Q_OBJECT
+    // QML 友好：isOpen 作为可读属性（变化时发出 connectionChanged 刷新）。
+    Q_PROPERTY(bool isOpen READ isOpen NOTIFY connectionChanged)
 
 public:
     explicit SerialWorker(QObject* parent = nullptr);
     ~SerialWorker() override;
 
     // 扫描可用串口。
-    QStringList scanPorts();
+    Q_INVOKABLE QStringList scanPorts();
 
     // 打开串口（参数从 cfg 读取，成功后写入内部配置）。
     bool open(const sd::PortConfig& cfg);
-    void close();
+    Q_INVOKABLE void close();
     bool isOpen() const { return open_; }
 
     // 发送数据，返回实际写入字节数（未打开时返回 0）。
     qint64 send(const QByteArray& data);
 
     // 最近一次错误的人类可读描述。
-    QString lastError() const;
+    Q_INVOKABLE QString lastError() const;
 
     // 串口参数配置（供高级设置对话框读写）。
     sd::PortConfig& config();
@@ -65,6 +68,19 @@ public:
 
     // 十六进制字符串 -> 字节数组（纯工具，供发送框 HEX 模式使用）。
     static QByteArray hexStringToByteArray(const QString& hex);
+
+    // ------ QML 桥接接口 ------
+    // QML 无法直接构造 sd::PortConfig（C++ 结构体），用 QVariantMap 桥接 open()。
+    Q_INVOKABLE bool openDevice(const QVariantMap& cfg);
+    // QML 发送：接受字符串（文本）或 HEX 字节内容，return 实际写入字节数。
+    Q_INVOKABLE qint64 sendData(const QVariant& data);
+    // 实例版 HEX 工具（静态方法不能 Q_INVOKABLE，QML 只能调用实例方法）。
+    Q_INVOKABLE QByteArray hexStringToByteArrayInstance(const QString& hex) const;
+    // 把 JSON 描述的协议 schema 应用到协议引擎 + 字段池。
+    // 格式: {"name":"cust","fields":[{"name":"f1","type":"float","length":4,"endian":"小端"},...]}
+    Q_INVOKABLE bool applySchemaJson(const QString& json);
+    // 返回字段池当前可用作可视化数据源的字段名列表。
+    Q_INVOKABLE QStringList fieldPoolNames();
 
     // ------ 协议解析 / 可视化接入 ------
     // 应用一个可配置二进制协议 schema：注册到协议引擎并选中，同时写入字段池。

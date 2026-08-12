@@ -13,6 +13,9 @@
 #include "service/Session.hpp"
 
 #include <QDebug>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
 
 #include <algorithm>
 #include <cstddef>
@@ -154,3 +157,80 @@ sd::FieldPool& SerialWorker::fieldPool() { return *fieldPool_; }
 const sd::FieldPool& SerialWorker::fieldPool() const { return *fieldPool_; }
 
 sd::ProtocolEngine& SerialWorker::protocolEngine() { return *protoEngine_; }
+
+// ============================================================
+// QML 桥接接口实现
+// ============================================================
+
+bool SerialWorker::openDevice(const QVariantMap& cfg) {
+    sd::PortConfig c = *config_; // 保留其余默认/已配置参数
+    bool ok = false;
+    c.name = cfg.value("name").toString().toStdString();
+    int v = cfg.value("baudRate").toInt(&ok); if (ok) c.baudRate = v;
+    v = cfg.value("dataBits").toInt(&ok);     if (ok) c.dataBits = v;
+    v = cfg.value("parity").toInt(&ok);       if (ok) c.parity = v;
+    v = cfg.value("stopBits").toInt(&ok);     if (ok) c.stopBits = v;
+    v = cfg.value("flowControl").toInt(&ok);  if (ok) c.flowControl = v;
+    return open(c);
+}
+
+QByteArray SerialWorker::hexStringToByteArrayInstance(const QString& hex) const {
+    return hexStringToByteArray(hex);
+}
+
+qint64 SerialWorker::sendData(const QVariant& data) {
+    if (data.canConvert<QByteArray>())
+        return send(data.toByteArray());
+    // 字符串按 UTF-8 编码发送。
+    return send(data.toString().toUtf8());
+}
+
+// 把字段类型字符串映射为 FieldType（未知/空 -> F32）。
+namespace {
+sd::FieldType qmlFieldType(const QString& t) {
+    QString s = t.toLower();
+    if (s == "uint8")  return sd::FieldType::U8;
+    if (s == "uint16") return sd::FieldType::U16;
+    if (s == "uint32") return sd::FieldType::U32;
+    if (s == "int8")   return sd::FieldType::I8;
+    if (s == "int16")  return sd::FieldType::I16;
+    if (s == "int32")  return sd::FieldType::I32;
+    if (s == "double") return sd::FieldType::F64;
+    if (s == "bool")   return sd::FieldType::Bool;
+    return sd::FieldType::F32; // float / 未知
+}
+} // namespace
+
+bool SerialWorker::applySchemaJson(const QString& json) {
+    QJsonParseError perr;
+    QJsonDocument doc = QJsonDocument::fromJson(json.toUtf8(), &perr);
+    if (perr.error != QJsonParseError::NoError) return false;
+    QJsonObject root = doc.object();
+
+    sd::ProtocolSchema schema;
+    schema.name = root.value("name").toString("cust").toStdString();
+
+    QJsonArray fields = root.value("fields").toArray();
+    for (const auto& v : fields) {
+        QJsonObject fo = v.toObject();
+        sd::FieldDesc fd;
+        fd.name = fo.value("name").toString(QStringLiteral("field")).toStdString();
+        QString type = fo.value("type").toString();
+        fd.type = qmlFieldType(type);
+        fd.byteLength = fo.value("length").toInt(-1);
+        fd.isPadding = (type.compare("padding", Qt::CaseInsensitive) == 0);
+        fd.bigEndian = fo.value("endian").toString() == QLatin1String("大端");
+        // dataSource=false 表示"不作为可视化数据源"；缺省视为 true。
+        // （QML 协议页的 selected 仅用于"选中编辑"，不是数据源开关。）
+        fd.dataSource = fo.value("dataSource").toBool(true);
+        schema.fields.push_back(fd);
+    }
+    return applyProtocolSchema(schema);
+}
+
+QStringList SerialWorker::fieldPoolNames() {
+    QStringList names;
+    for (const auto& s : fieldPool_->sources())
+        names << QString::fromStdString(s.name);
+    return names;
+}

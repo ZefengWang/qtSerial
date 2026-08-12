@@ -4,18 +4,18 @@ import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
 
-Column {
+ColumnLayout {
     id: root
     anchors.fill: parent
+    anchors.margins: 16
     spacing: 12
-    padding: 16
 
     // Status bar
     Rectangle {
         color: "#24283b"
         radius: 6
-        height: 36
         Layout.fillWidth: true
+        implicitHeight: 36
 
         RowLayout {
             anchors.fill: parent
@@ -71,10 +71,10 @@ Column {
         border.color: "#3a3f5a"
         border.width: 1
         radius: 6
-        height: 48
         Layout.fillWidth: true
+        implicitHeight: 48
 
-        Row {
+        RowLayout {
             anchors.fill: parent
             anchors.margins: 8
             spacing: 8
@@ -97,7 +97,7 @@ Column {
 
     // --- State ---
     property bool connected: mainWindow.connected
-    property list<string> history: []
+    property var history: []      // 用 var 数组（list 类型在 QML 中只读，不能 push）
     property int historyIndex: -1
 
     // --- Actions ---
@@ -130,8 +130,7 @@ Column {
         }
 
         // Send
-        var bytes = cmd + "\r\n"
-        serialWorker.send(bytes)
+        serialWorker.sendData(cmd + "\r\n")
         cmdInput.text = ""
     }
 

@@ -5,11 +5,11 @@ import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
 
-Column {
+ColumnLayout {
     id: root
     anchors.fill: parent
+    anchors.margins: 16
     spacing: 12
-    padding: 16
 
     Label {
         text: "可视化配置（读协议字段 → 选类型 → 绑数据源）"
@@ -18,15 +18,16 @@ Column {
         font.bold: true
     }
 
-    Row {
+    RowLayout {
         spacing: 12
-        anchors.left: parent.left
-        anchors.right: parent.right
         Layout.fillWidth: true
+        Layout.fillHeight: true
 
         // Left: data sources from field pool
-        Column {
-            width: parent.width * 0.3
+        ColumnLayout {
+            Layout.preferredWidth: root.width * 0.3
+            Layout.fillWidth: true
+            Layout.fillHeight: true
             spacing: 8
 
             Label {
@@ -40,10 +41,11 @@ Column {
                 border.color: "#3a3f5a"
                 border.width: 1
                 radius: 8
-                height: 220
                 Layout.fillWidth: true
+                Layout.fillHeight: true
 
                 ListView {
+                    id: sourceList
                     anchors.fill: parent
                     anchors.margins: 8
                     model: sources
@@ -53,16 +55,12 @@ Column {
                         color: model.selected ? "#2f3346" : "transparent"
                         radius: 4
 
-                        Row {
+                        RowLayout {
                             anchors.fill: parent
                             anchors.margins: { left: 8, right: 8 }
                             spacing: 8
 
-                            Text {
-                                text: model.name
-                                color: "#c0caf5"
-                                font.bold: true
-                            }
+                            Text { text: model.name; color: "#c0caf5"; font.bold: true }
                             Item { Layout.fillWidth: true }
                             Text { text: model.selected ? "☑" : "☐"; color: "#c0caf5" }
                         }
@@ -75,26 +73,29 @@ Column {
                 }
             }
 
-            Row {
+            RowLayout {
                 spacing: 8
                 Label { text: "类型:"; color: "#c0caf5" }
                 ComboBox {
                     id: typeCombo
                     model: ["波形", "3D姿态"]
-                    width: 120
+                    Layout.fillWidth: true
                 }
             }
 
             Button {
                 text: "+ 新建视图"
+                Layout.fillWidth: true
                 onClicked: addView()
                 background: Rectangle { color: "#7aa2f7"; radius: 6 }
             }
         }
 
         // Right: view canvas
-        Column {
-            width: parent.width * 0.7
+        ColumnLayout {
+            Layout.preferredWidth: root.width * 0.7
+            Layout.fillWidth: true
+            Layout.fillHeight: true
             spacing: 8
 
             Label { text: "视图画布"; color: "#c0caf5"; font.bold: true }
@@ -113,23 +114,16 @@ Column {
                     border.width: 1
                     radius: 8
 
-                    Column {
+                    ColumnLayout {
                         anchors.fill: parent
                         anchors.margins: 8
                         spacing: 4
 
-                        Row {
+                        RowLayout {
                             width: parent.width
                             spacing: 8
-                            Text {
-                                text: model.title
-                                color: "#7aa2f7"
-                                font.bold: true
-                            }
-                            Text {
-                                text: model.type
-                                color: "#565f89"
-                            }
+                            Text { text: model.title; color: "#7aa2f7"; font.bold: true }
+                            Text { text: model.type; color: "#565f89" }
                             Item { Layout.fillWidth: true }
                             Text {
                                 text: "✕"
@@ -142,8 +136,8 @@ Column {
                         }
 
                         Rectangle {
-                            width: parent.width
-                            height: 90
+                            Layout.fillWidth: true
+                            Layout.fillHeight: true
                             color: "#0d0d14"
                             radius: 6
 
@@ -166,20 +160,19 @@ Column {
     property var views: []
 
     function loadSources() {
-        // 从字段池读取数据源（C++ 侧 FieldPool）
-        // SerialWorker.fieldPool 暴露到 QML 后遍历
-        var pool = serialWorker.fieldPool  // 若暴露为 QObject
-        if (pool !== undefined && pool.fields !== undefined) {
-            sources = []
-            for (var i = 0; i < pool.fields.length; i++) {
-                sources.push({name: pool.fields[i], selectable: true, selected: false})
-            }
+        // 从字段池读取数据源（C++ 侧 FieldPool，经桥接方法返回字段名列表）。
+        var names = serialWorker.fieldPoolNames()
+        sources = []
+        for (var i = 0; i < names.length; i++) {
+            sources.push({name: names[i], selected: false})
         }
     }
 
     function toggleSource(index) {
         if (index >= 0 && index < sources.length) {
-            sources[index].selected = !sources[index].selected
+            var copy = sources
+            copy[index] = {name: sources[index].name, selected: !sources[index].selected}
+            sources = copy  // 重新赋值触发 ListView 刷新
         }
     }
 
@@ -196,12 +189,16 @@ Column {
             type: type,
             fields: selectedFields
         }
-        views.push(view)
+        var vcopy = views
+        vcopy.push(view)
+        views = vcopy  // 重新赋值触发 ListView 刷新
     }
 
     function removeView(index) {
         if (index >= 0 && index < views.length) {
-            views.splice(index, 1)
+            var vcopy = views.slice()
+            vcopy.splice(index, 1)
+            views = vcopy
         }
     }
 

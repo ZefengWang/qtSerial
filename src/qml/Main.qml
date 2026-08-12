@@ -10,6 +10,7 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
+import "pages"  // 显式导入子目录页面类型（BasicPage/TerminalPage/ProtocolPage/VizPage/SettingsPage）
 
 ApplicationWindow {
     id: mainWindow

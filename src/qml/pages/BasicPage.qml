@@ -1,32 +1,32 @@
 // BasicPage —— 基础界面（收发一体，含发送区）
 // 对应原型"01 基础界面"：端口选择、波特率、打开/刷新、接收日志、发送框。
+// 布局用 ColumnLayout（Positioner 无法可靠承载子项的 anchors/fill*）。
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
 
-Column {
+ColumnLayout {
     id: root
     anchors.fill: parent
+    anchors.margins: 16
     spacing: 12
-    padding: 16
 
     // Port config row
-    Row {
+    RowLayout {
         spacing: 8
-        anchors.left: parent.left
-        anchors.right: parent.right
+        Layout.fillWidth: true
 
         Label { text: "端口:"; color: "#c0caf5" }
         ComboBox {
             id: portCombo
-            Layout.preferredWidth: 180
+            implicitWidth: 180
             textRole: "text"
         }
         Label { text: "波特率:"; color: "#c0caf5" }
         TextField {
             id: baudInput
             text: "115200"
-            Layout.preferredWidth: 100
+            implicitWidth: 100
             inputMethodHints: Qt.ImhDigitsOnly
             validator: IntValidator { bottom: 1200; top: 921600 }
         }
@@ -52,18 +52,15 @@ Column {
             text: statusText
             color: "#565f89"
             verticalAlignment: Text.AlignVCenter
+            Layout.fillWidth: true
         }
     }
 
     // Receive log
-    Column {
+    ColumnLayout {
         spacing: 6
-        anchors.left: parent.left
-        anchors.right: parent.right
-        anchors.top: portCombo.bottom
-        anchors.bottom: sendBox.top
-        anchors.margins: 0
-        topMargin: 12
+        Layout.fillWidth: true
+        Layout.fillHeight: true
 
         Label {
             text: "接收日志"
@@ -71,11 +68,12 @@ Column {
             font.bold: true
         }
         Rectangle {
+            Layout.fillWidth: true
+            Layout.fillHeight: true
             color: "#12121a"
             border.color: "#3a3f5a"
             border.width: 1
             radius: 8
-            anchors.fill: parent
 
             ScrollView {
                 anchors.fill: parent
@@ -106,42 +104,32 @@ Column {
     }
 
     // Send box
-    Column {
-        id: sendBox
+    RowLayout {
         spacing: 8
-        anchors.left: parent.left
-        anchors.right: parent.right
-        bottom: parent.bottom
+        Layout.fillWidth: true
 
-        Label { text: "发送" color: "#c0caf5" font.bold: true }
-        Row {
-            spacing: 8
-            anchors.left: parent.left
-            anchors.right: parent.right
-
-            TextField {
-                id: sendInput
-                placeholderText: "输入内容，回车发送"
-                Layout.fillWidth: true
-                background: Rectangle {
-                    color: "#12121a"
-                    border.color: "#3a3f5a"
-                    border.width: 1
-                    radius: 6
-                }
-                onEditingFinished: if (connected && !sendInput.text.isEmpty) doSend()
+        TextField {
+            id: sendInput
+            placeholderText: "输入内容，回车发送"
+            Layout.fillWidth: true
+            background: Rectangle {
+                color: "#12121a"
+                border.color: "#3a3f5a"
+                border.width: 1
+                radius: 6
             }
-            CheckBox {
-                id: hexCheck
-                text: "HEX"
-                textColor: "#c0caf5"
-            }
-            Button {
-                id: sendBtn
-                text: "发送"
-                onClicked: doSend()
-                background: Rectangle { color: "#9ece6a"; radius: 6 }
-            }
+            onEditingFinished: if (connected && sendInput.text.length > 0) doSend()
+        }
+        CheckBox {
+            id: hexCheck
+            text: "HEX"
+            textColor: "#c0caf5"
+        }
+        Button {
+            id: sendBtn
+            text: "发送"
+            onClicked: doSend()
+            background: Rectangle { color: "#9ece6a"; radius: 6 }
         }
     }
 
@@ -169,7 +157,7 @@ Column {
     }
 
     function openPort() {
-        if (!portCombo.currentIndex >= 0) {
+        if (portCombo.currentIndex < 0) {
             console.warn("No port selected")
             return
         }
@@ -177,12 +165,7 @@ Column {
             name: portCombo.currentText,
             baudRate: parseInt(baudInput.text) || 115200
         }
-        // SerialWorker 在 C++ 侧，调用其 open
-        // QML → C++ 调用，配置通过 worker 内建逻辑
-        // 这里需构造 sd::PortConfig，但 QML 不能直接构造
-        // 简化：serialWorker 已持有 config，仅需设置 name/baud
-        // 我们通过 JS 调用，实际 C++ 会读取配置
-        var ok = serialWorker.open(cfg)
+        var ok = serialWorker.openDevice(cfg)
         if (!ok) {
             statusText = "打开失败: " + serialWorker.lastError()
         }
@@ -197,17 +180,17 @@ Column {
         if (!text || !connected) return
         var data
         if (hexCheck.checked) {
-            data = serialWorker.hexStringToByteArray(text)
+            data = serialWorker.hexStringToByteArrayInstance(text)
         } else {
-            data = text + "\r\n"
+            data = text // sendData 按 QVariant 编码
         }
-        serialWorker.send(data)
+        var n = serialWorker.sendData(data)
         // Log sent
         var ts = new Date()
         var tsStr = "[" + ts.getHours().toString().padStart(2, '0') + ":" +
                     ts.getMinutes().toString().padStart(2, '0') + ":" +
                     ts.getSeconds().toString().padStart(2, '0') + "]"
-        recvLog.append(tsStr + " → 发送: " + text + "\n")
+        recvLog.append(tsStr + " → 发送(" + (n > 0 ? n + "B" : "失败") + "): " + text + "\n")
         sendInput.text = ""
     }
 
