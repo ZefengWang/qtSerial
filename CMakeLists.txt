@@ -15,16 +15,79 @@ set(CMAKE_AUTOUIC ON)
 
 find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets SerialPort)
 
+# ============================================================
+# 核心层（src/core）: 纯 C++，不依赖 Qt。
+# 这是 P0 架构的可测试性基础——核心逻辑可脱离 UI 单独编译与测试。
+# ============================================================
+add_library(sd_core STATIC
+    src/core/IClock.cpp
+    src/core/FakeSource.cpp
+    src/core/buffer/RingBuffer.cpp
+    src/core/buffer/AppendBuffer.cpp
+    src/core/buffer/DoubleBuffer.cpp
+)
+target_include_directories(sd_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
+target_compile_features(sd_core PUBLIC cxx_std_17)
+
+# ============================================================
+# Service 层（src/service）: 依赖核心层，纯 C++。
+# ============================================================
+add_library(sd_service STATIC
+    src/service/EventBus.cpp
+    src/service/Session.cpp
+    src/service/ProtocolEngine.cpp
+    src/service/FieldPool.cpp
+    src/service/ViewManager.cpp
+)
+target_include_directories(sd_service PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
+target_link_libraries(sd_service PUBLIC sd_core sd_protocol)
+target_compile_features(sd_service PUBLIC cxx_std_17)
+
+# ============================================================
+# 协议层（src/protocol）: 依赖核心层，纯 C++。
+# 自定义协议扩展点；波形/3D 等均建立在协议解析之上。
+# ============================================================
+add_library(sd_protocol STATIC
+    src/protocol/LineProtocol.cpp
+    src/protocol/CsvProtocol.cpp
+    src/protocol/GenericBinaryProtocol.cpp
+    src/protocol/ProtocolRegistry.cpp
+)
+target_include_directories(sd_protocol PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
+target_link_libraries(sd_protocol PUBLIC sd_core)
+target_compile_features(sd_protocol PUBLIC cxx_std_17)
+
+# ============================================================
+# 插件层（src/plugin）: 依赖核心层接口，纯 C++。
+# ============================================================
+add_library(sd_plugin STATIC
+    src/plugin/PluginRegistry.cpp
+)
+target_include_directories(sd_plugin PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
+target_link_libraries(sd_plugin PUBLIC sd_core)
+target_compile_features(sd_plugin PUBLIC cxx_std_17)
+
+# ============================================================
+# IO 层（src/io）: 生产环境数据源，依赖 Qt SerialPort。
+# 把 QSerialPort 封装到 DataSource 接口背后，供 Service/UI 使用。
+# ============================================================
+add_library(sd_io STATIC
+    src/io/SerialSource.cpp
+    src/io/PortMonitor.cpp
+)
+target_include_directories(sd_io PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
+target_link_libraries(sd_io PUBLIC sd_core Qt6::SerialPort)
+target_compile_features(sd_io PUBLIC cxx_std_17)
+
 set(PROJECT_SOURCES
     main.cpp
     user_interaction.cpp
     uart_setting.cpp
-    uart_core.cpp
     thememanager.cpp
     languagemanager.cpp
+    src/ui/SerialWorker.cpp
     uart_interaction.h
     uart_setting.h
-    uart_core.h
     thememanager.h
     languagemanager.h
     uart_interface.ui
@@ -39,9 +102,11 @@ else()
 endif()
 
 # Compile .ts -> .qm using lrelease (Qt Linguist tool)
+# 优先使用 Qt6 自带的 lrelease（Debian 位于 /usr/lib/qt6/bin），
+# 避免误用 PATH 中损坏的 /usr/bin/lrelease 包装器。
 find_program(QT_LRELEASE_EXECUTABLE
-    NAMES lrelease lrelease-qt6 lrelease6
-    HINTS ${Qt6_DIR}/bin
+    NAMES lrelease-qt6 lrelease6 lrelease
+    HINTS ${Qt6_DIR}/bin /usr/lib/qt6/bin /usr/lib64/qt6/bin
 )
 if(QT_LRELEASE_EXECUTABLE)
     add_custom_command(
@@ -63,6 +128,10 @@ target_link_libraries(serial-debug PRIVATE
     Qt6::Gui
     Qt6::Widgets
     Qt6::SerialPort
+    sd_core
+    sd_service
+    sd_plugin
+    sd_io
 )
 
 target_compile_definitions(serial-debug PRIVATE
@@ -85,3 +154,7 @@ if(WIN32)
         COMMENT "Deploying Qt dependencies..."
     )
 endif()
+
+# 核心层单元测试（纯 C++，无 Qt 依赖）
+enable_testing()
+add_subdirectory(tests)

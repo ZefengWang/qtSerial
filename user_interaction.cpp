@@ -20,8 +20,8 @@ serial::serial(QWidget *parent) :
     ui(new Ui::serial){
   ui->setupUi(this);
 
-  // 初始化串口
-  uart_core_ = new Uartcore;
+  // 初始化串口（三层架构 UI 门面：Session + SerialSource + EventBus）
+  worker_ = new SerialWorker(this);
 
   // 初始化定时发送定时器
   send_timer_ = new QTimer(this);
@@ -36,8 +36,8 @@ serial::serial(QWidget *parent) :
   // 默认设置波特率为115200（第5项）
   ui->baudComboBox->setCurrentIndex(5);
 
-  // 连接串口读取信号
-  connect(uart_core_, SIGNAL(read_signal()), this, SLOT(readSerialData()));
+  // 数据经 EventBus 到达后，由 SerialWorker 转发为本信号
+  connect(worker_, &SerialWorker::dataReceived, this, &serial::readSerialData);
 
   // 初始化连接状态显示
   updateConnectionStatus(false);
@@ -56,9 +56,9 @@ serial::~serial(){
   if (send_timer_->isActive()) {
     send_timer_->stop();
   }
-  if (uart_core_) {
-    uart_core_->close();
-    delete uart_core_;
+  if (worker_) {
+    worker_->close();
+    // worker_ 由 Qt 父子机制释放（this 为 parent）
   }
   delete ui;
 }
@@ -167,8 +167,7 @@ void serial::loadStyleSheet() {
 }
 
 void serial::refreshPortList() {
-  QStringList serialStrList;
-  serialStrList = uart_core_->serial_port_scanning();
+  QStringList serialStrList = worker_->scanPorts();
   ui->portComboBox->clear();
   for (int i = 0; i < serialStrList.size(); i++) {
     ui->portComboBox->addItem(serialStrList[i]);
@@ -252,25 +251,23 @@ void serial::on_openPortButton_clicked() {
   }
 
   if (!is_the_serial_port_open_) {
-    if (uart_core_->open(ui->portComboBox->currentText(),
-                         ui->baudComboBox->currentText().toInt(),
-                         uart_core_->data_bits_,
-                         uart_core_->parity_bits_,
-                         uart_core_->stop_bits_,
-                         uart_core_->flow_control_)) {
+    sd::PortConfig cfg = worker_->config();
+    cfg.name = ui->portComboBox->currentText().toStdString();
+    cfg.baudRate = ui->baudComboBox->currentText().toInt();
+    if (worker_->open(cfg)) {
       is_the_serial_port_open_ = true;
       updateConnectionStatus(true);
       appendReceiveData(tr("[System] Port opened successfully: %1").arg(ui->portComboBox->currentText()));
     } else {
       appendReceiveData(tr("[System] Failed to open port: %1").arg(ui->portComboBox->currentText()));
       // Show detailed error (permission, etc.) in the receive panel
-      QString errMsg = uart_core_->lastError();
+      QString errMsg = worker_->lastError();
       if (!errMsg.isEmpty()) {
           appendReceiveData(errMsg);
       }
     }
   } else {
-    uart_core_->close();
+    worker_->close();
     is_the_serial_port_open_ = false;
     updateConnectionStatus(false);
     appendReceiveData(tr("[System] Port closed"));
@@ -287,7 +284,7 @@ void serial::on_sendButton_clicked() {
   send_data = ui->sendTextEdit->toPlainText().toLatin1();
 
   if (ui->hexSendCheckBox->isChecked()) {
-    send_data = uart_core_->hex_string_to_bytearray(ui->sendTextEdit->toPlainText());
+    send_data = SerialWorker::hexStringToByteArray(ui->sendTextEdit->toPlainText());
   }
 
   if (ui->newlineCheckBox->isChecked()) {
@@ -300,7 +297,7 @@ void serial::on_sendButton_clicked() {
 
   tx_quantity_ += send_data.length();
   ui->txCountLabel->setText(formatByteCount(tx_quantity_));
-  uart_core_->send_data(send_data);
+  worker_->send(send_data);
 }
 
 void serial::timerSendData() {
@@ -328,9 +325,8 @@ void serial::on_timerCheckBox_stateChanged(int state) {
   }
 }
 
-// 读取从自定义串口类获得的数据
-void serial::readSerialData() {
-  QByteArray data = uart_core_->get_data_buffer_content();
+// 处理经 EventBus 到达的数据（由 SerialWorker::dataReceived 触发）
+void serial::readSerialData(const QByteArray &data) {
   if (data.isEmpty()) return;
 
   if (ui->hexRecvCheckBox->isChecked()) {
@@ -345,8 +341,6 @@ void serial::readSerialData() {
 
   rx_quantity_ += data.length();
   ui->rxCountLabel->setText(formatByteCount(rx_quantity_));
-
-  uart_core_->clear_data_buffer_content();
 }
 
 void serial::on_clearTextButton_clicked() {
@@ -365,8 +359,9 @@ void serial::on_clearRecvButton_clicked() {
 }
 
 void serial::on_advancedSettingsBtn_clicked() {
-  // 创建模态对话框，传入 this 作为 parent
-  setting param(this);
+  // 创建模态对话框，传入 SerialWorker 的配置引用与可用端口列表
+  QStringList availablePorts = worker_->scanPorts();
+  setting param(worker_->config(), availablePorts, this);
 
   // 保留标题栏/关闭按钮，去掉最小化/最大化
   param.setWindowFlags(Qt::Dialog | Qt::CustomizeWindowHint | Qt::WindowTitleHint | Qt::WindowCloseButtonHint);
@@ -374,9 +369,6 @@ void serial::on_advancedSettingsBtn_clicked() {
   // 应用级模态：阻塞整个应用的所有窗口，焦点不会穿透到主窗口
   param.setModal(true);
   param.setWindowModality(Qt::ApplicationModal);
-
-  // 加载串口数据
-  param.find_available_serial_ports_and_add(uart_core_);
 
   // 调整为实际内容大小
   param.adjustSize();
@@ -391,26 +383,27 @@ void serial::on_advancedSettingsBtn_clicked() {
   y = qMax(y, parentGeometry.top());
   param.move(x, y);
 
-  // 模态执行
+  // 模态执行（accept() 会把对话框选择写回 worker_->config()）
   param.exec();
 
-  if (!uart_core_->serial_name_.isEmpty()) {
-    ui->portComboBox->setCurrentText(uart_core_->serial_name_);
+  const sd::PortConfig& cfg = worker_->config();
+  if (!cfg.name.empty()) {
+    ui->portComboBox->setCurrentText(QString::fromStdString(cfg.name));
   }
 
-  if (uart_core_->baud_rate_ > 0) {
-    int index = ui->baudComboBox->findText(QString::number(uart_core_->baud_rate_));
+  if (cfg.baudRate > 0) {
+    int index = ui->baudComboBox->findText(QString::number(cfg.baudRate));
     if (index >= 0) {
       ui->baudComboBox->setCurrentIndex(index);
     } else {
-      ui->baudComboBox->addItem(QString::number(uart_core_->baud_rate_));
-      ui->baudComboBox->setCurrentText(QString::number(uart_core_->baud_rate_));
+      ui->baudComboBox->addItem(QString::number(cfg.baudRate));
+      ui->baudComboBox->setCurrentText(QString::number(cfg.baudRate));
     }
   }
 }
 
 void serial::on_portComboBox_activated(const QString &arg1) {
-  uart_core_->serial_name_ = arg1;
+  worker_->config().name = arg1.toStdString();
 }
 
 void serial::on_saveLogButton_clicked() {

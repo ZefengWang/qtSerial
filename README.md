@@ -176,11 +176,32 @@ qtSerial/
 ├── uart_interaction.h        # 主窗口类定义
 ├── user_interaction.cpp      # 主窗口交互逻辑
 ├── uart_interface.ui         # 主界面 UI（Qt Designer）
-├── uart_core.h               # 串口核心类定义
-├── uart_core.cpp             # 串口核心实现
-├── uart_setting.h            # 设置对话框类定义
-├── uart_setting.cpp          # 设置对话框实现
+├── uart_setting.h/cpp        # 高级设置对话框（读写 sd::PortConfig）
 ├── uart_setting.ui           # 设置对话框 UI
+├── src/
+│   ├── core/                 # 核心层：纯 C++，不依赖 Qt
+│   │   ├── DataSource.hpp    #   数据源抽象（open/read/write/scan）
+│   │   ├── PortConfig.hpp    #   串口参数配置结构体
+│   │   ├── IClock.hpp        #   时钟抽象（计时/超时）
+│   │   ├── FakeSource.hpp    #   测试用确定性数据源
+│   │   └── buffer/           #   缓冲策略（Ring/Append/Double）
+│   ├── protocol/              # 协议层：可扩展协议解析/编码
+│   │   ├── IProtocol.hpp       #   解析+编码统一接口
+│   │   ├── LineProtocol.hpp    #   行协议（内置默认）
+│   │   ├── CsvProtocol.hpp     #   CSV 协议（内置）
+│   │   ├── GenericBinaryProtocol.hpp # 可配置二进制协议（按 schema 解析）
+│   │   └── ProtocolRegistry.hpp#   协议注册表（自定义扩展点）
+│   ├── service/               # 服务层：会话编排 + 事件总线
+│   │   ├── Session.hpp        #   数据源→缓冲→事件总线的门面
+│   │   ├── EventBus.hpp       #   订阅/发布总线（插件与 UI 消费）
+│   │   ├── FieldPool.hpp      #   字段池（协议字段→数据源映射）
+│   │   └── ViewManager.hpp    #   可视化视图管理（互斥类型+多数据源）
+│   ├── io/                   # IO 层：生产环境数据源
+│   │   └── SerialSource.hpp  #   把 QSerialPort 封装到 DataSource 背后
+│   ├── plugin/               # 插件层：可扩展特性（波形图/3D 等）
+│   └── ui/                   # UI 适配层
+│       └── SerialWorker.hpp  #   三层架构的 Qt 门面（供主窗口调用）
+├── tests/                    # 测试金字塔（单测/集成/系统）
 ├── styles/
 │   └── dark.qss              # 深色主题样式表（Tokyo Night）
 ├── res.qrc                   # Qt 资源文件
@@ -190,6 +211,8 @@ qtSerial/
 └── .github/workflows/
     └── build.yml             # 多平台 CI/CD 工作流
 ```
+
+> 数据通路：`SerialSource`（读 QSerialPort）→ `Session::poll()` → 缓冲策略 → `EventBus(rx)` → `SerialWorker` 转发 `dataReceived` 信号 → 主窗口显示。`SerialWorker` 由内部 QTimer 驱动轮询，数据天然在 UI 线程到达。
 
 ## 🤖 CI/CD 自动构建
 
@@ -296,6 +319,13 @@ GitHub Actions 的 Artifacts 默认保留 90 天。请重新触发一次构建�
 - [x] X11 + Wayland 支持
 - [x] 多平台 CI/CD（Ubuntu 22.04 / 24.04 / 26.04 + Windows）
 - [x] Qt5 / Qt6 兼容编译
+- [x] 三层架构重构（core/service/UI）+ 依赖注入
+- [x] 缓冲策略（Ring/Append/Double），解决高速串口丢数据
+- [x] 事件总线（原始字节 + 结构化帧双通道）
+- [x] 可配置协议框架（字段/类型/长度/padding/字节序）
+- [x] 字段池 + 可视化视图管理（互斥类型 + 多数据源）
+- [x] 串口热插拔监测（平台事件驱动，可选）
+- [x] 测试金字塔：单测/集成/系统 8 项全通过
 
 **规划中：**
 

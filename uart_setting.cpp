@@ -1,36 +1,27 @@
 #include "uart_setting.h"
-#include "uart_interaction.h"
 #include "ui_uart_setting.h"
 #include <QDebug>
 
-setting::setting(QWidget *parent) :
+setting::setting(sd::PortConfig& cfg,
+                 const QStringList& availablePorts,
+                 QWidget* parent) :
     QDialog(parent),
-    ui(new Ui::setting){
+    ui(new Ui::setting),
+    cfg_(cfg) {
   ui->setupUi(this);
 
-  // 设置默认值
-  ui->bitComboBox->setCurrentIndex(3);   // 默认8位数据位
-  ui->stopComboBox->setCurrentIndex(0);  // 默认1位停止位
-  ui->parityComboBox->setCurrentIndex(0);  // 默认无校验
-  ui->flowctrComboBox->setCurrentIndex(0); // 默认无流控
-}
-
-void setting::find_available_serial_ports_and_add(Uartcore* serial_core) {
-  uart_core_ = serial_core;
-  QStringList serialStrList;
-  serialStrList = uart_core_->serial_port_scanning();
-  for (int i = 0; i < serialStrList.size(); i++) {
-    ui->comComboBox->addItem(serialStrList[i]);
+  // 填端口列表
+  for (const QString& p : availablePorts) {
+    ui->comComboBox->addItem(p);
   }
-
-  // 设置当前值
-  if (!uart_core_->serial_name_.isEmpty()) {
-    int idx = ui->comComboBox->findText(uart_core_->serial_name_);
+  if (!cfg_.name.empty()) {
+    int idx = ui->comComboBox->findText(QString::fromStdString(cfg_.name));
     if (idx >= 0) ui->comComboBox->setCurrentIndex(idx);
   }
 
-  if (uart_core_->baud_rate_ > 0) {
-    QString baudStr = QString::number(uart_core_->baud_rate_);
+  // 波特率
+  if (cfg_.baudRate > 0) {
+    QString baudStr = QString::number(cfg_.baudRate);
     int idx = ui->baudComboBox->findText(baudStr);
     if (idx >= 0) {
       ui->baudComboBox->setCurrentIndex(idx);
@@ -40,24 +31,24 @@ void setting::find_available_serial_ports_and_add(Uartcore* serial_core) {
     }
   }
 
-  // 数据位
-  if (uart_core_->data_bits_ >= 5 && uart_core_->data_bits_ <= 8) {
-    ui->bitComboBox->setCurrentIndex(uart_core_->data_bits_ - 5);
+  // 数据位（5/6/7/8 -> 索引 0..3）
+  if (cfg_.dataBits >= 5 && cfg_.dataBits <= 8) {
+    ui->bitComboBox->setCurrentIndex(cfg_.dataBits - 5);
   }
 
-  // 停止位
-  if (uart_core_->stop_bits_ >= 1 && uart_core_->stop_bits_ <= 3) {
-    ui->stopComboBox->setCurrentIndex(uart_core_->stop_bits_ - 1);
+  // 停止位（1/2/3 -> 索引，兼容旧版 OneAndHalfStop=3 的传递）
+  if (cfg_.stopBits >= 1 && cfg_.stopBits <= 3) {
+    ui->stopComboBox->setCurrentIndex(cfg_.stopBits - 1);
   }
 
-  // 校验位
-  if (uart_core_->parity_bits_ >= 0 && uart_core_->parity_bits_ <= 5) {
-    ui->parityComboBox->setCurrentIndex(uart_core_->parity_bits_);
+  // 校验位（0=No,1=Even,2=Odd,3=Space,4=Mark -> 索引 0..4）
+  if (cfg_.parity >= 0 && cfg_.parity <= 4) {
+    ui->parityComboBox->setCurrentIndex(cfg_.parity);
   }
 
-  // 流控
-  if (uart_core_->flow_control_ >= 0 && uart_core_->flow_control_ <= 2) {
-    ui->flowctrComboBox->setCurrentIndex(uart_core_->flow_control_);
+  // 流控（0=No,1=Hardware,2=Software -> 索引 0..2）
+  if (cfg_.flowControl >= 0 && cfg_.flowControl <= 2) {
+    ui->flowctrComboBox->setCurrentIndex(cfg_.flowControl);
   }
 }
 
@@ -65,32 +56,24 @@ setting::~setting(){
   delete ui;
 }
 
-void setting::on_buttonBox_accepted(){
-  // 兼容旧版 buttonBox 连接（如果有的话）
-}
-
 void setting::accept() {
-  uart_core_->serial_name_ = ui->comComboBox->currentText();
-  uart_core_->baud_rate_ = ui->baudComboBox->currentText().toInt();
-  uart_core_->data_bits_ = ui->bitComboBox->currentText().toInt();
-  uart_core_->stop_bits_ = ui->stopComboBox->currentText().toInt();
+  cfg_.name = ui->comComboBox->currentText().toStdString();
+  cfg_.baudRate = ui->baudComboBox->currentText().toInt();
+  cfg_.dataBits = ui->bitComboBox->currentText().toInt();
+  cfg_.stopBits = ui->stopComboBox->currentText().toInt();
 
-  // 校验位：0=None, 2=Even, 3=Odd, 4=Space, 5=Mark (QSerialPort::Parity 枚举值)
-  int parityMap[] = {0, 2, 3, 4, 5};
-  int parityIdx = ui->parityComboBox->currentIndex();
-  if (parityIdx >= 0 && parityIdx < 5) {
-    uart_core_->parity_bits_ = parityMap[parityIdx];
-  }
+  // 校验位：索引 0..4 即 PortConfig/SerialSource 约定（0=No,1=Even,2=Odd,3=Space,4=Mark）
+  cfg_.parity = ui->parityComboBox->currentIndex();
 
-  // 流控：0=None, 1=Hardware, 2=Software (QSerialPort::FlowControl 枚举值)
-  uart_core_->flow_control_ = ui->flowctrComboBox->currentIndex();
+  // 流控：索引 0..2（0=No,1=Hardware,2=Software）
+  cfg_.flowControl = ui->flowctrComboBox->currentIndex();
 
-  qDebug() << "serial_name_:" << uart_core_->serial_name_;
-  qDebug() << "baud_rate_:" << uart_core_->baud_rate_;
-  qDebug() << "data_bits_:" << uart_core_->data_bits_;
-  qDebug() << "parity_bits_:" << uart_core_->parity_bits_;
-  qDebug() << "stop_bits_:" << uart_core_->stop_bits_;
-  qDebug() << "flow_control_:" << uart_core_->flow_control_;
+  qDebug() << "serial_name_:" << QString::fromStdString(cfg_.name);
+  qDebug() << "baud_rate_:" << cfg_.baudRate;
+  qDebug() << "data_bits_:" << cfg_.dataBits;
+  qDebug() << "parity_bits_:" << cfg_.parity;
+  qDebug() << "stop_bits_:" << cfg_.stopBits;
+  qDebug() << "flow_control_:" << cfg_.flowControl;
 
   QDialog::accept();
 }

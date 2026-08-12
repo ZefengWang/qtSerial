@@ -330,10 +330,52 @@ jobs:
           name: ${{ env.APP_NAME }}-Windows-x86_64
           path: build/${{ env.APP_NAME }}-Windows-x86_64.zip
 
+  # ===================== Tests (CMake + ctest + coverage) =====================
+  # 测试门禁：编译核心/service/plugin/io/tests，运行单测/集成/系统测试，
+  # 并输出核心层覆盖率。与构建打包解耦，任何 PR/推送都必须通过。
+  tests:
+    name: Tests (Qt6, ctest + coverage)
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Install system dependencies (X11 + Wayland + Qt6)
+        run: |
+          sudo rm -f /etc/apt/sources.list.d/microsoft-prod.list \
+                     /etc/apt/sources.list.d/azure-cli.list 2>/dev/null || true
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential cmake patchelf gcov \
+            libgl1-mesa-dev \
+            libxkbcommon-x11-0 libxkbcommon-dev \
+            libwayland-dev wayland-protocols \
+            libx11-xcb-dev libxcb-cursor-dev libxcb-icccm4-dev \
+            libxcb-image0-dev libxcb-keysyms1-dev libxcb-randr0-dev \
+            libxcb-render-util0-dev libxcb-shape0-dev libxcb-sync-dev \
+            libxcb-xfixes0-dev libxcb-xinerama0-dev libxcb-xkb-dev
+          sudo apt-get install -y qt6-base-dev qt6-base-dev-tools
+          sudo apt-get install -y qt6-serialport-dev 2>/dev/null \
+            || sudo apt-get install -y libqt6serialport6-dev
+
+      - name: Configure (CMake)
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build (app + all tests)
+        run: cmake --build build -j$(nproc)
+
+      - name: Run unit / integration / system tests (ctest)
+        run: |
+          cd build
+          QT_QPA_PLATFORM=offscreen ctest --output-on-failure
+
+      - name: Core-layer line coverage (gcov)
+        run: ./tests/coverage.sh build-cov
+
   # ===================== Release (on tag) =====================
   release:
     name: Create Release
-    needs: [linux-build, windows-build]
+    needs: [linux-build, windows-build, tests]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v')
     permissions:

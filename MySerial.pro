@@ -28,20 +28,45 @@ isEmpty(APP_VERSION_EXTERNAL) {
 }
 DEFINES += APP_VERSION=\\\"$${APP_VERSION_EXTERNAL}\\\"
 
+# 三层架构源码（core/service/plugin 纯 C++，io/ui 依赖 Qt）
+# 与 CMakeLists.txt 保持一致，保证 qmake 打包管线也构建新架构。
+INCLUDEPATH += $$PWD/src
+
 SOURCES += \
     main.cpp \
     user_interaction.cpp \
     uart_setting.cpp \
-    uart_core.cpp \
     thememanager.cpp \
-    languagemanager.cpp
+    languagemanager.cpp \
+    src/ui/SerialWorker.cpp \
+    src/io/SerialSource.cpp \
+    src/service/EventBus.cpp \
+    src/service/Session.cpp \
+    src/core/IClock.cpp \
+    src/core/buffer/RingBuffer.cpp \
+    src/core/buffer/AppendBuffer.cpp \
+    src/core/buffer/DoubleBuffer.cpp \
+    src/plugin/PluginRegistry.cpp
 
 HEADERS  += \
-    uart_core.h \
     uart_setting.h \
     uart_interaction.h \
     thememanager.h \
-    languagemanager.h
+    languagemanager.h \
+    src/ui/SerialWorker.hpp \
+    src/io/SerialSource.hpp \
+    src/service/EventBus.hpp \
+    src/service/Session.hpp \
+    src/core/DataSource.hpp \
+    src/core/IClock.hpp \
+    src/core/PortConfig.hpp \
+    src/core/buffer/IBufferStrategy.hpp \
+    src/core/buffer/RingBuffer.hpp \
+    src/core/buffer/AppendBuffer.hpp \
+    src/core/buffer/DoubleBuffer.hpp \
+    src/plugin/IPlugin.hpp \
+    src/plugin/IViewHost.hpp \
+    src/plugin/PluginRegistry.hpp
 
 FORMS    += \
     uart_interface.ui \

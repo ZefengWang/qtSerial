@@ -1,0 +1,79 @@
+#ifndef SRC_UI_SERIAL_WORKER_HPP
+#define SRC_UI_SERIAL_WORKER_HPP
+
+#include <QByteArray>
+#include <QObject>
+#include <QString>
+#include <QStringList>
+#include <QTimer>
+
+namespace sd {
+struct PortConfig;
+class SerialSource;
+class RingBuffer;
+class Session;
+class EventBus;
+class SteadyClock;
+} // namespace sd
+
+// ============================================================
+// SerialWorker —— UI 层适配器（门面）
+//
+// 把三层架构（core/service/io）封装成 Qt Widgets 友好的接口，
+// 让主窗口不感知底层 Session/EventBus/DataSource 细节。
+//
+// 数据通路：
+//   QSerialPort → SerialSource(read) → Session::poll() → RingBuffer
+//              → EventBus(rx) → [订阅者在本对象内] → dataReceived 信号
+//
+// Session::poll() 由内部 QTimer 驱动，运行在创建本对象的线程（UI 线程），
+// 因此 dataReceived 信号天然在 UI 线程发出，无需跨线程同步。
+// ============================================================
+class SerialWorker : public QObject {
+    Q_OBJECT
+
+public:
+    explicit SerialWorker(QObject* parent = nullptr);
+    ~SerialWorker() override;
+
+    // 扫描可用串口。
+    QStringList scanPorts();
+
+    // 打开串口（参数从 cfg 读取，成功后写入内部配置）。
+    bool open(const sd::PortConfig& cfg);
+    void close();
+    bool isOpen() const { return open_; }
+
+    // 发送数据，返回实际写入字节数（未打开时返回 0）。
+    qint64 send(const QByteArray& data);
+
+    // 最近一次错误的人类可读描述。
+    QString lastError() const;
+
+    // 串口参数配置（供高级设置对话框读写）。
+    sd::PortConfig& config();
+    const sd::PortConfig& config() const;
+
+    // 十六进制字符串 -> 字节数组（纯工具，供发送框 HEX 模式使用）。
+    static QByteArray hexStringToByteArray(const QString& hex);
+
+signals:
+    // 收到一帧数据（已按攒批阈值切块）。UI 线程发出。
+    void dataReceived(const QByteArray& data);
+    // 连接状态变化（false=关闭，true=打开）。
+    void connectionChanged(bool open);
+
+private:
+    void poll();
+
+    sd::SteadyClock* clock_ = nullptr;
+    sd::SerialSource* source_ = nullptr;
+    sd::RingBuffer*   buffer_ = nullptr;
+    sd::Session*      session_ = nullptr;
+    sd::EventBus*     bus_ = nullptr;
+    QTimer            pollTimer_;
+    sd::PortConfig*   config_ = nullptr;
+    bool              open_ = false;
+};
+
+#endif // SRC_UI_SERIAL_WORKER_HPP

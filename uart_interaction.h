@@ -5,8 +5,8 @@
 #include <QTimer>
 #include <QDateTime>
 #include <QActionGroup>
-#include "uart_core.h"
-#include "qserialport.h"
+#include <QByteArray>
+#include "ui/SerialWorker.hpp"
 
 namespace Ui {
 class serial;
@@ -27,7 +27,7 @@ private slots:
   void on_refreshButton_clicked();
   void on_openPortButton_clicked();
   void on_sendButton_clicked();
-  void readSerialData();
+  void readSerialData(const QByteArray &data);
   void on_clearTextButton_clicked();
   void on_clearRecvButton_clicked();
   void on_advancedSettingsBtn_clicked();
@@ -53,7 +53,7 @@ private:
   void retranslateUi();
 
   Ui::serial *ui;
-  Uartcore *uart_core_;
+  SerialWorker *worker_;
   QTimer *send_timer_;
   qint64 rx_quantity_ = 0;
   qint64 tx_quantity_ = 0;
