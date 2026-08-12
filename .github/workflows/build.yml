@@ -346,7 +346,7 @@ jobs:
                      /etc/apt/sources.list.d/azure-cli.list 2>/dev/null || true
           sudo apt-get update
           sudo apt-get install -y \
-            build-essential cmake patchelf gcov \
+            build-essential cmake patchelf \
             libgl1-mesa-dev \
             libxkbcommon-x11-0 libxkbcommon-dev \
             libwayland-dev wayland-protocols \

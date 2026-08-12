@@ -1,5 +1,7 @@
 #include "EventBus.hpp"
 
+#include <algorithm>
+
 namespace sd {
 
 std::size_t EventBus::subscribe(const std::string& topic, DataHandler handler) {
