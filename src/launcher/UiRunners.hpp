@@ -17,7 +17,8 @@ class QApplication;
 int runTui(QCoreApplication& app);
 
 // 浏览器后端。app 需为 QCoreApplication（可传 QApplication）。
-int runWeb(QCoreApplication& app, int port);
+// openBrowser=true 时启动后自动用系统默认浏览器打开页面。
+int runWeb(QCoreApplication& app, int port, bool openBrowser = true);
 
 // QML 界面。仅当编译期启用了 Qt Quick（HAVE_QML）时可用。
 // app 需为 QGuiApplication（QApplication 是其子类，可传）。

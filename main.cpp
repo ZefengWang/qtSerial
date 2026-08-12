@@ -40,13 +40,17 @@ void printUiHelp() {
         "命令行覆盖：\n"
         "  serial-debug --ui=qt     Qt Widgets 桌面界面\n"
         "  serial-debug --ui=tui    无头终端界面（纯文本）\n"
-        "  serial-debug --ui=web    浏览器界面（WebSocket 服务，打开 http://localhost:8080）\n"
+        "  serial-debug --ui=web    浏览器界面（默认端口 8080）\n"
+        "  serial-debug --ui=web --port 9090   指定 Web 端口\n"
+        "  serial-debug --ui=web --no-browser  启动 Web 但不自动打开浏览器\n"
 #ifdef HAVE_QML
         "  serial-debug --ui=qml    QML 界面（需 Qt Quick 支持，可选 GPU）\n"
 #else
         "  serial-debug --ui=qml    (QML 未编译进本二进制)\n"
 #endif
         "  serial-debug --ui=auto   自动选择（默认）\n"
+        "\nWeb 模式行为：启动后自动打开系统默认浏览器，进程后台运行服务；\n"
+        "  默认端口 8080 被占用时自动切换到空闲端口。\n"
         "----------------------------------------\n";
 }
 
@@ -94,9 +98,14 @@ int main(int argc, char *argv[])
       QCoreApplication app(argc, argv);
       app.setApplicationName("serial-debug-web");
       int port = 8080;
-      for (int i = 0; i < cliArgs.size(); ++i)
+      bool openBrowser = true;
+      for (int i = 0; i < cliArgs.size(); ++i) {
         if (cliArgs[i] == "--port" && i + 1 < cliArgs.size()) port = cliArgs[i + 1].toInt();
-      return runWeb(app, port);
+        if (cliArgs[i] == "--no-browser") openBrowser = false;
+      }
+      // 无头环境没有图形浏览器，默认不自动打开；除非显式 --ui=web 且 --open-browser。
+      if (!explicitUi) openBrowser = false;
+      return runWeb(app, port, openBrowser);
     }
     // 其它（含 QML/Widgets，无图形不可用）一律回退 TUI。
     QCoreApplication app(argc, argv);
@@ -128,9 +137,13 @@ int main(int argc, char *argv[])
       return runTui(a);
     case UiMode::Web: {
       int port = 8080;
-      for (int i = 0; i < cliArgs.size(); ++i)
+      bool openBrowser = true;
+      for (int i = 0; i < cliArgs.size(); ++i) {
         if (cliArgs[i] == "--port" && i + 1 < cliArgs.size()) port = cliArgs[i + 1].toInt();
-      return runWeb(a, port);
+        if (cliArgs[i] == "--no-browser") openBrowser = false;
+      }
+      // 有图形环境：启动后自动打开系统默认浏览器，进程转后台继续服务。
+      return runWeb(a, port, openBrowser);
     }
 #ifdef HAVE_QML
     case UiMode::QML:
