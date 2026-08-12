@@ -63,11 +63,15 @@ jobs:
 
       - name: Set version from git tag
         run: |
-          # 优先从 tag（如 v2.1.0）提取版本号；无 tag 时退回 git describe。
+          # 优先从 tag（如 v2.1.0）提取版本号。
           if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
             VERSION="${GITHUB_REF#refs/tags/v}"
           else
-            VERSION="$(git describe --tags --always --dirty 2>/dev/null || echo '0.0.0')"
+            # 分支/PR push：本身不是发布，仅取最近 tag 的数字版本，保证 deb 版本号合法。
+            # 不要用 git describe（--always 会退回纯 hash，如 ba348cb，dpkg-deb 会拒绝）。
+            VERSION="$(git describe --tags --abbrev=0 2>/dev/null || echo '0.0.0')"
+            VERSION="${VERSION#v}"
+            [[ "$VERSION" =~ ^[0-9] ]] || VERSION="0.0.0"
           fi
           echo "APP_VERSION=${VERSION}" >> "$GITHUB_ENV"
           echo "Resolved APP_VERSION=${VERSION}"
@@ -268,7 +272,10 @@ jobs:
           if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
             VERSION="${GITHUB_REF#refs/tags/v}"
           else
-            VERSION="$(git describe --tags --always --dirty 2>/dev/null || echo '0.0.0')"
+            # 分支/PR push：取最近 tag 的数字版本，避免 --always 退回纯 hash 导致版本号非法。
+            VERSION="$(git describe --tags --abbrev=0 2>/dev/null || echo '0.0.0')"
+            VERSION="${VERSION#v}"
+            [[ "$VERSION" =~ ^[0-9] ]] || VERSION="0.0.0"
           fi
           echo "APP_VERSION=${VERSION}" >> "$GITHUB_ENV"
           echo "Resolved APP_VERSION=${VERSION}"
