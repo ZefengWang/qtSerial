@@ -5,9 +5,16 @@
 #
 #-------------------------------------------------
 
-QT       += core gui serialport
+QT       += core gui serialport network
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
+
+# 统一单可执行文件：UI 模式（桌面/TUI/Web/QML）由运行时检测与切换。
+# 有 Qt Quick/Qml 时启用 QML 宿主（HAVE_QML），否则自动降级为其余三种模式。
+qtHaveModule(quick):qtHaveModule(qml) {
+    QT += quick qml
+    DEFINES += HAVE_QML
+}
 
 # 三层架构依赖 C++17（generic lambda、make_unique 等）。
 # Qt5 与 Qt6 统一使用 C++17；现代 gcc/clang 均支持。
@@ -52,7 +59,12 @@ SOURCES += \
     src/protocol/CsvProtocol.cpp \
     src/protocol/GenericBinaryProtocol.cpp \
     src/protocol/ProtocolRegistry.cpp \
-    src/plugin/PluginRegistry.cpp
+    src/plugin/PluginRegistry.cpp \
+    src/launcher/UiMode.cpp \
+    src/launcher/UiModePicker.cpp \
+    src/launcher/run_tui.cpp \
+    src/launcher/run_web.cpp \
+    src/launcher/run_qml.cpp
 
 HEADERS  += \
     uart_setting.h \
@@ -84,7 +96,10 @@ HEADERS  += \
     src/protocol/ProtocolRegistry.hpp \
     src/plugin/IPlugin.hpp \
     src/plugin/IViewHost.hpp \
-    src/plugin/PluginRegistry.hpp
+    src/plugin/PluginRegistry.hpp \
+    src/launcher/UiMode.hpp \
+    src/launcher/UiModePicker.hpp \
+    src/launcher/UiRunners.hpp
 
 FORMS    += \
     uart_interface.ui \
@@ -115,3 +130,8 @@ else: unix:!android: target.path = /opt/$${TARGET}/bin
 
 RESOURCES += \
     res.qrc
+
+qtHaveModule(quick):qtHaveModule(qml) {
+    RESOURCES += \
+        src/qml/qml_resources.qrc
+}
