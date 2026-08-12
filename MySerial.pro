@@ -10,9 +10,11 @@ QT       += core gui serialport network
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
 # 统一单可执行文件：UI 模式（桌面/TUI/Web/QML）由运行时检测与切换。
-# 有 Qt Quick/Qml 时启用 QML 宿主（HAVE_QML），否则自动降级为其余三种模式。
-qtHaveModule(quick):qtHaveModule(qml) {
-    QT += quick qml
+# 有 Qt Quick/Qml/QuickControls2 时启用 QML 宿主（HAVE_QML），否则自动降级为其余三种模式。
+# 注意：run_qml.cpp 依赖 QtQuickControls2/QQuickStyle，故 quickcontrols2 也是必要条件；
+#       缺任一模块时都不启用 HAVE_QML，避免链接期找不到 QQuickStyle 而失败。
+qtHaveModule(quick):qtHaveModule(qml):qtHaveModule(quickcontrols2) {
+    QT += quick qml quickcontrols2
     DEFINES += HAVE_QML
 }
 
@@ -131,7 +133,7 @@ else: unix:!android: target.path = /opt/$${TARGET}/bin
 RESOURCES += \
     res.qrc
 
-qtHaveModule(quick):qtHaveModule(qml) {
+qtHaveModule(quick):qtHaveModule(qml):qtHaveModule(quickcontrols2) {
     RESOURCES += \
         src/qml/qml_resources.qrc
 }

@@ -119,8 +119,13 @@ jobs:
             || sudo apt-get install -y libqt6serialport6-dev 2>/dev/null \
             || sudo apt-get install -y libqt5serialport5-dev
           # 安装 Qt Quick/QML 开发包，启用 HAVE_QML（QML UI 模式）。
-          # Ubuntu 22.04(Qt5) 用 qtdeclarative5-dev；24.04/26.04(Qt6) 用 qt6-declarative-dev。
+          # Ubuntu 22.04(Qt5) 用 qtdeclarative5-dev + qtquickcontrols2-5-dev；
+          # 24.04/26.04(Qt6) 用 qt6-declarative-dev（内含 QuickControls2）。
           sudo apt-get install -y ${{ matrix.qt_qml_pkg }}
+          # 仅 Qt5 需要单独安装 QuickControls2 开发包（Header 依赖它编译 run_qml.cpp）
+          if [[ "${{ matrix.qt_major }}" == "5" ]]; then
+            sudo apt-get install -y qtquickcontrols2-5-dev || echo "qtquickcontrols2-5-dev unavailable; QML mode will be disabled"
+          fi
           # 确认 qmake 与 lrelease 可用
           ${{ matrix.qmake_cmd }} -v
           ls /usr/lib/qt6/bin/ 2>/dev/null | grep -E 'lrelease|lupdate' || true
