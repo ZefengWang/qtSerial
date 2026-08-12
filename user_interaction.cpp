@@ -901,6 +901,9 @@ void serial::addVizViewCard(const ViewInstanceUi &vi) {
 
   // 绘制区
   VizPlotWidget *plot = new VizPlotWidget(vi.typeName, vi.fields);
+  // 用动态属性标记本控件类型：VizPlotWidget 是局部类、无 Q_OBJECT，
+  // 新版 Qt 不允许对其 findChildren<custom*>()/qobject_cast，故用属性标记 + static_cast。
+  plot->setProperty("sdVizPlot", true);
   plot->pushEmpty(); // 初始演示曲线
   plot->setMinimumHeight(140);
   v->addWidget(plot);
@@ -960,9 +963,13 @@ void serial::onFrameReceived(const sd::Frame &frame) {
   for (int i = 0; i < lay->count(); ++i) {
     QWidget *w = lay->itemAt(i)->widget();
     if (QFrame *card = qobject_cast<QFrame*>(w)) {
-      // 找到卡片里的绘制区
-      QList<VizPlotWidget*> plots = card->findChildren<VizPlotWidget*>();
-      for (VizPlotWidget *p : plots) p->pushSample(frame);
+      // 找到卡片里的绘制区。
+      // VizPlotWidget 是局部类、无 Q_OBJECT，新版 Qt 禁止对其
+      // findChildren<custom*>()/qobject_cast。用动态属性标记 + static_cast 定位。
+      const auto kidWidgets = card->findChildren<QWidget*>();
+      for (QWidget *kid : kidWidgets)
+        if (kid->property("sdVizPlot").toBool())
+          static_cast<VizPlotWidget*>(kid)->pushSample(frame);
     }
   }
 }
