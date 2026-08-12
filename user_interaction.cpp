@@ -1113,19 +1113,28 @@ void serial::onFrameReceived(const sd::Frame &frame) {
 // ============================================================
 void serial::initSettingsPage() {
   // 主题下拉框（文本 -> ThemeManager 主题名）
-  ui->themeCombo->clear();
-  ui->themeCombo->addItem(tr("跟随系统"), QStringLiteral("system"));
-  ui->themeCombo->addItem(tr("深色"),    QStringLiteral("dark"));
-  ui->themeCombo->addItem(tr("浅色"),    QStringLiteral("light"));
-  int themeIdx = ui->themeCombo->findData(ThemeManager::instance().currentTheme());
-  if (themeIdx >= 0) ui->themeCombo->setCurrentIndex(themeIdx);
+  // 阻塞信号：clear()/addItem() 会触发 currentTextChanged，
+  // 若不阻塞，第一项"跟随系统"被自动选中会调 applyTheme("system")
+  // 从而清空样式表，导致主题被意外重置。
+  {
+    QSignalBlocker blocker(ui->themeCombo);
+    ui->themeCombo->clear();
+    ui->themeCombo->addItem(tr("跟随系统"), QStringLiteral("system"));
+    ui->themeCombo->addItem(tr("深色"),    QStringLiteral("dark"));
+    ui->themeCombo->addItem(tr("浅色"),    QStringLiteral("light"));
+    int themeIdx = ui->themeCombo->findData(ThemeManager::instance().currentTheme());
+    if (themeIdx >= 0) ui->themeCombo->setCurrentIndex(themeIdx);
+  }
 
-  // 语言下拉框（文本 -> LanguageManager 语言码）
-  ui->languageCombo->clear();
-  ui->languageCombo->addItem(tr("中文"),    QStringLiteral("zh_CN"));
-  ui->languageCombo->addItem(tr("English"), QStringLiteral("en"));
-  int langIdx = ui->languageCombo->findData(LanguageManager::instance().currentLanguage());
-  if (langIdx >= 0) ui->languageCombo->setCurrentIndex(langIdx);
+  // 语言下拉框（同理阻塞信号）
+  {
+    QSignalBlocker blocker(ui->languageCombo);
+    ui->languageCombo->clear();
+    ui->languageCombo->addItem(tr("中文"),    QStringLiteral("zh_CN"));
+    ui->languageCombo->addItem(tr("English"), QStringLiteral("en"));
+    int langIdx = ui->languageCombo->findData(LanguageManager::instance().currentLanguage());
+    if (langIdx >= 0) ui->languageCombo->setCurrentIndex(langIdx);
+  }
 
   // 定时发送间隔：初始取基础页定时输入框当前值
   bool ok = false;
