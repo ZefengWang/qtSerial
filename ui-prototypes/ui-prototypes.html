@@ -134,6 +134,12 @@ h4.h .tag{font-family:var(--font-mono);font-size:10.5px;color:var(--accent);back
 .pg-tab.active{background:var(--tokyo-accent);color:#1a1b26;font-weight:700}
 .pg-tab.base{color:rgba(192,202,245,.9)}
 .pg-tab .x{margin-left:6px;color:rgba(192,202,245,.5)}
+/* 设置页 mock */
+.set-nav{width:150px;display:flex;flex-direction:column;gap:4px;flex-shrink:0}
+.set-nav-item{padding:7px 10px;border-radius:6px;font-size:11px;color:rgba(192,202,245,.65);cursor:pointer;background:transparent}
+.set-nav-item.active{background:rgba(122,162,247,.14);color:var(--tokyo-accent);font-weight:700}
+.set-pane{display:flex;flex-direction:column;gap:9px;background:var(--tokyo-bg2);border-radius:8px;padding:12px}
+.set-foot{margin-top:6px;font-size:10px;color:rgba(192,202,245,.55)}
 
 /* view / viz canvas */
 .vm{display:grid;grid-template-columns:260px 1fr;gap:12px}
@@ -207,9 +213,9 @@ h4.h .tag{font-family:var(--font-mono);font-size:10.5px;color:var(--accent);back
   <div class="brand"><span class="dot"></span> 串口调试助手 · UI 原型</div>
   <div class="variant-switch" role="tablist">
     <button class="variant-btn" data-v="base" type="button">基础+发送</button>
-    <button class="variant-btn" data-v="term" type="button">终端交互</button>
+    <button class="variant-btn active" data-v="term" type="button">终端交互</button>
     <button class="variant-btn" data-v="proto" type="button">协议解析</button>
-    <button class="variant-btn active" data-v="viz" type="button">可视化配置</button>
+    <button class="variant-btn" data-v="viz" type="button">可视化配置</button>
     <button class="variant-btn" data-v="host" type="button">四套宿主</button>
   </div>
 </div>
@@ -302,7 +308,7 @@ h4.h .tag{font-family:var(--font-mono);font-size:10.5px;color:var(--accent);back
   </section>
 
   <!-- ============ 02 终端交互 ============ -->
-  <section class="variant-panel" id="panel-term">
+  <section class="variant-panel active" id="panel-term">
     <h2 class="sec"><span class="num">02</span>终端交互界面</h2>
     <p class="sec-sub">连接的是<b>交互式设备</b>（如 Linux 终端、shell、串口命令行），支持<b>敲命令并回显</b>，与基础文本界面独立。</p>
     <div class="frame-box">
@@ -464,7 +470,7 @@ h4.h .tag{font-family:var(--font-mono);font-size:10.5px;color:var(--accent);back
   </section>
 
   <!-- ============ 04 可视化配置 ============ -->
-  <section class="variant-panel active" id="panel-viz">
+  <section class="variant-panel" id="panel-viz">
     <h2 class="sec"><span class="num">04</span>可视化配置（独立界面）</h2>
     <p class="sec-sub">独立于协议解析的<b>可视化配置界面</b>：<b>读取当前协议的字段类型与长度</b>，为每个视图选择<b>互斥的可视化类型</b>（波形 / 3D姿态），并选择<b>哪些字段充当数据源</b>。支持多实例、多数据源、多曲线合一或各自独立。</p>
 
