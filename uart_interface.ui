@@ -511,7 +511,16 @@
               <item>
                <widget class="QWidget" name="textPanelWidget">
                 <layout class="QVBoxLayout" name="textPanelLayout">
-                 <item><widget class="QWidget" name="statusBarWidget">
+                 <property name="spacing">
+                  <number>8</number>
+                 </property>
+                 <property name="leftMargin">
+                  <number>0</number>
+                 </property>
+                 <property name="rightMargin">
+                  <number>0</number>
+                 </property>
+                 <item><widget class="QWidget" name="recvSectionWidget"><property name="sizePolicy"><sizepolicy><hsizetype>Expanding</hsizetype><vsizetype>Expanding</vsizetype><horstretch>0</horstretch><verstretch>0</verstretch></sizepolicy></property><layout class="QVBoxLayout" name="recvSectionLayout"><property name="spacing">8</property><property name="leftMargin">0</property><property name="rightMargin">0</property><item><widget class="QWidget" name="statusBarWidget">
              <property name="sizePolicy">
               <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
                <horstretch>0</horstretch>
@@ -702,18 +711,7 @@
               </item>
              </layout>
             </widget>
-             </item>
-             <property name="spacing">
-                  <number>8</number>
-                 </property>
-                 <property name="leftMargin">
-                  <number>0</number>
-                 </property>
-                 <property name="rightMargin">
-                  <number>0</number>
-                 </property>
-                 <item>
-                  <widget class="QTextBrowser" name="recvBrowser">
+             </item><item><widget class="QTextBrowser" name="recvBrowser">
                    <property name="sizePolicy">
                     <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
                      <horstretch>0</horstretch>
@@ -721,8 +719,7 @@
                     </sizepolicy>
                    </property>
                   </widget>
-                 </item>
-                 <item>
+                 </item></layout></widget></item><item>
                   <widget class="QWidget" name="sendSectionWidget">
                    <property name="sizePolicy">
                     <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
@@ -1355,6 +1352,9 @@
                  </size>
                 </property>
                 <layout class="QHBoxLayout" name="framePreviewBarLayout">
+                 <property name="spacing">
+                  <number>0</number>
+                 </property>
                  <property name="leftMargin">
                   <number>2</number>
                  </property>

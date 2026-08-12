@@ -302,6 +302,8 @@ serial::serial(QWidget *parent) :
   ui->protoTable->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
   ui->protoTable->setSelectionBehavior(QAbstractItemView::SelectRows);
   ui->protoTable->setSelectionMode(QAbstractItemView::SingleSelection);
+  // 隐藏行号列（对齐原型：勾选列即最左列，避免浅色主题下出现突兀的深色竖条）
+  ui->protoTable->verticalHeader()->setVisible(false);
   // 表格可直接编辑（名称、长度列）
   ui->protoTable->setEditTriggers(QAbstractItemView::DoubleClicked |
                                    QAbstractItemView::EditKeyPressed |
@@ -892,11 +894,10 @@ void serial::renderProtoLayoutPreview() {
     double pct = (double)len * 100.0 / (double)total;
     QString color = kSegColors[i % 8];
 
-    // 分段
+    // 分段（原型为无缝连续色条：无间距、无圆角，字段间以颜色区分）
     auto *seg = new QFrame(protoLayoutBar_);
     seg->setFixedHeight(28);
-    seg->setStyleSheet(QString("background:%1;border:none;border-radius:3px;")
-                           .arg(color));
+    seg->setStyleSheet(QString("background:%1;border:none;").arg(color));
     auto *segLay = new QHBoxLayout(seg);
     segLay->setContentsMargins(2, 0, 2, 0);
     segLay->setAlignment(Qt::AlignCenter);

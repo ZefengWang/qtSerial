@@ -438,9 +438,8 @@ QCheckBox:disabled::indicator {
 
 /* --- Status Bar Widget --- */
 #statusBarWidget {
-    background-color: #24283b;
-    border: 1px solid #3b4261;
-    border-radius: 8px;
+    background-color: transparent;
+    border-bottom: 1px solid #3b4261;
 }
 
 #statusIndicator {
