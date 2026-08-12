@@ -412,6 +412,8 @@ void serial::onThemeChanged(const QString &themeName) {
   int idx = ui->themeCombo->findData(themeName);
   if (idx >= 0 && ui->themeCombo->currentIndex() != idx)
       ui->themeCombo->setCurrentIndex(idx);
+  // 重新渲染帧布局预览（颜色随主题变化）
+  renderProtoLayoutPreview();
 }
 
 void serial::onLanguageChanged(const QString &languageCode) {
@@ -805,10 +807,14 @@ void serial::renderProtoLayoutPreview() {
     total += len;
   }
 
+  bool isDark = (ThemeManager::instance().currentTheme() == "dark");
+  QString mutedColor = isDark ? "rgba(192,202,245,.5)" : "rgba(80,80,80,.5)";
+  QString legendColor = isDark ? "rgba(192,202,245,.75)" : "rgba(60,60,60,.75)";
+
   if (protoFields_.isEmpty() || total <= 0) {
     auto *empty = new QLabel(tr("— 空 —"), protoLayoutBar_);
     empty->setAlignment(Qt::AlignCenter);
-    empty->setStyleSheet("color:rgba(192,202,245,.5);font-size:10px;");
+    empty->setStyleSheet(QString("color:%1;font-size:10px;").arg(mutedColor));
     protoLayoutBarLayout_->addWidget(empty);
     return;
   }
@@ -847,8 +853,8 @@ void serial::renderProtoLayoutPreview() {
     ld->setText(QString("<span style='background:%1;'>  </span> %2 · %3B")
                     .arg(color, name)
                     .arg(len));
-    ld->setStyleSheet("color:rgba(192,202,245,.75);font-size:10px;"
-                      "font-family:'JetBrains Mono',monospace;");
+    ld->setStyleSheet(QString("color:%1;font-size:10px;"
+                      "font-family:'JetBrains Mono',monospace;").arg(legendColor));
     protoLayoutLegendLayout_->addWidget(ld);
   }
 }
@@ -1137,6 +1143,8 @@ void serial::onFrameReceived(const sd::Frame &frame) {
 
   // 2) 更新协议解析页的实时解析数据显示
   if (ui->parsedDataView) {
+    bool isDark = (ThemeManager::instance().currentTheme() == "dark");
+    QString valColor = isDark ? "#c0caf5" : "#333333";
     QString html = QString("<div style='color:#7aa2f7;font-weight:bold;'>"
                            "帧 #%1 [%2] · %3 字段</div><br>")
                         .arg(frame.seq)
@@ -1144,14 +1152,16 @@ void serial::onFrameReceived(const sd::Frame &frame) {
                         .arg(frame.numeric.size() + frame.text.size());
     for (const auto &kv : frame.numeric) {
       html += QString("<div style='color:#9ece6a;'>%1</div>"
-                      "<div style='color:#c0caf5;margin-left:12px;'>= %2</div>")
+                      "<div style='color:%2;margin-left:12px;'>= %3</div>")
                   .arg(QString::fromStdString(kv.first))
+                  .arg(valColor)
                   .arg(kv.second, 0, 'g', 6);
     }
     for (const auto &kv : frame.text) {
       html += QString("<div style='color:#e0af68;'>%1</div>"
-                      "<div style='color:#c0caf5;margin-left:12px;'>= %2</div>")
+                      "<div style='color:%2;margin-left:12px;'>= %3</div>")
                   .arg(QString::fromStdString(kv.first))
+                  .arg(valColor)
                   .arg(QString::fromStdString(kv.second));
     }
     ui->parsedDataView->setHtml(html);

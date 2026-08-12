@@ -1607,9 +1607,6 @@
                   <height>40</height>
                  </size>
                 </property>
-                <property name="styleSheet">
-                 <string notr="true">background: #0d0d14; border: 1px solid rgba(255,255,255,.15); border-radius: 6px;</string>
-                </property>
                 <layout class="QHBoxLayout" name="framePreviewBarLayout">
                  <property name="leftMargin">
                   <number>2</number>
@@ -1682,9 +1679,6 @@
                 </property>
                 <property name="readOnly">
                  <bool>true</bool>
-                </property>
-                <property name="styleSheet">
-                 <string notr="true">background: #16161e; color: #c0caf5; font-family: 'JetBrains Mono', 'Consolas', monospace; font-size: 11px; border: 1px solid #3a3f5a; border-radius: 4px;</string>
                 </property>
                </widget>
               </item>

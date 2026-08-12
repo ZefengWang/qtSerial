@@ -762,3 +762,18 @@ QListWidget#settingsNavList::item:selected {
 QStackedWidget {
     background-color: #16161e;
 }
+
+/* --- Protocol page: frame preview & parsed data --- */
+#framePreviewBar {
+    background: #0d0d14;
+    border: 1px solid rgba(255,255,255,.15);
+    border-radius: 6px;
+}
+#parsedDataView {
+    background-color: #16161e;
+    color: #c0caf5;
+    font-family: "JetBrains Mono", "Consolas", monospace;
+    font-size: 11px;
+    border: 1px solid #3a3f5a;
+    border-radius: 4px;
+}
