@@ -59,6 +59,12 @@
         <source>Baud Rate</source>
         <translation>波特率</translation>
     </message>
+    <!-- 左侧数据位/校验/停止位组合标签 -->
+    <message>
+        <location filename="uart_interface.ui" line="590"/>
+        <source>Data Bits / Parity / Stop</source>
+        <translation>数据位 / 校验 / 停止位</translation>
+    </message>
     <!-- 按钮 -->
     <message>
         <location filename="uart_interface.ui" line="377"/>

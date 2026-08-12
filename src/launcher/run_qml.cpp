@@ -12,11 +12,16 @@
 #include "ui/SerialWorker.hpp"
 
 #include <QGuiApplication>
+#include <QtQuickControls2/QQuickStyle>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
 #include <QUrl>
 
 int runQml(QGuiApplication& app) {
+    // 显式指定 Fusion 原生 style，避免加载 QtQuick.Controls 2.15 的
+    // 旧版内部样式实现（在 Qt 6 下会产生大量 "Unknown property
+    // transition/content" 的无害噪音警告）。
+    QQuickStyle::setStyle(QStringLiteral("Fusion"));
     // 背靠 SerialWorker（与桌面/TUI/Web 同一套核心）。
     SerialWorker worker;
 

@@ -110,7 +110,7 @@ target_compile_features(sd_ui PUBLIC cxx_std_17)
 # Launcher 层（src/launcher）: 统一入口的 UI 模式管理 + 各宿主运行逻辑。
 # 有图形环境时复用 QApplication；无图形用 QCoreApplication。
 # ============================================================
-find_package(Qt6 QUIET COMPONENTS Quick Qml)
+find_package(Qt6 QUIET COMPONENTS Quick Qml QuickControls2)
 add_library(sd_launcher STATIC
     src/launcher/UiMode.cpp
     src/launcher/UiMode.hpp
@@ -129,7 +129,7 @@ target_compile_features(sd_launcher PUBLIC cxx_std_17)
 if(Qt6Quick_FOUND AND Qt6Qml_FOUND)
     target_compile_definitions(sd_launcher PRIVATE HAVE_QML)
     target_sources(sd_launcher PRIVATE src/qml/qml_resources.qrc)
-    target_link_libraries(sd_launcher PUBLIC Qt6::Quick Qt6::Qml)
+    target_link_libraries(sd_launcher PUBLIC Qt6::Quick Qt6::Qml Qt6::QuickControls2)
 endif()
 
 if(WIN32)
