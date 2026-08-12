@@ -1206,10 +1206,10 @@
                 </layout>
                </widget>
               </item>
-              <item alignment="Qt::AlignLeft">
+              <item>
                <widget class="QWidget" name="framePreviewLegend" native="true">
                 <property name="sizePolicy">
-                 <sizepolicy hsizetype="Maximum" vsizetype="Preferred">
+                 <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
                   <horstretch>0</horstretch>
                   <verstretch>0</verstretch>
                  </sizepolicy>
@@ -1223,26 +1223,6 @@
                 <property name="styleSheet">
                  <string notr="true">background: transparent;</string>
                 </property>
-                <layout class="QGridLayout" name="framePreviewLegendLayout">
-                 <property name="horizontalSpacing">
-                  <number>16</number>
-                 </property>
-                 <property name="verticalSpacing">
-                  <number>4</number>
-                 </property>
-                 <property name="leftMargin">
-                  <number>0</number>
-                 </property>
-                 <property name="topMargin">
-                  <number>0</number>
-                 </property>
-                 <property name="rightMargin">
-                  <number>0</number>
-                 </property>
-                 <property name="bottomMargin">
-                  <number>0</number>
-                 </property>
-                </layout>
                </widget>
               </item>
               </layout></widget></item><property name="spacing">

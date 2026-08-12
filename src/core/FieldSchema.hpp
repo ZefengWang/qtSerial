@@ -43,6 +43,7 @@ struct FieldDesc {
     double      offset = 0.0;
     std::string unit;             // 单位（如 V / A / ℃）
     bool        isPadding = false;// padding 占位：只占位、不产出数据源
+    bool        dataSource = true;// 是否进入字段池作为可视化数据源（勾选=是）
 };
 
 // 一个完整协议的帧布局描述。

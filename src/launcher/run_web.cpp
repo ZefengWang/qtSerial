@@ -63,6 +63,48 @@ QTcpServer*  g_web_server = nullptr;
 QSet<QTcpSocket*> g_web_clients;
 QHash<QTcpSocket*, QByteArray> g_web_buf;
 
+// ============================================================
+// 会话管理：统计浏览器页面连接数；无会话时自动退出进程防泄漏。
+// ============================================================
+void wsSend(QTcpSocket *s, const QJsonObject &obj); // 前向声明（定义在下方）
+QTimer* g_web_exitTimer = nullptr;   // 无会话自动退出倒计时
+bool    g_web_autoExit   = true;     // 是否启用自动退出
+int     g_web_exitDelaySec = 5;      // 无会话后的退出延迟（秒）
+
+// 广播当前会话数到所有已连接的浏览器页面。
+void broadcastSessions() {
+    QJsonObject o;
+    o["type"] = "session";
+    o["count"] = g_web_clients.size();
+    for (QTcpSocket *s : g_web_clients) wsSend(s, o);
+}
+
+// 无会话后调度自动退出；延迟期间若新会话接入则取消。
+void scheduleAutoExit() {
+    if (!g_web_autoExit) return;
+    if (g_web_exitTimer) return; // 已在倒计时
+    g_web_exitTimer = new QTimer;
+    g_web_exitTimer->setSingleShot(true);
+    QObject::connect(g_web_exitTimer, &QTimer::timeout, []() {
+        g_web_exitTimer = nullptr;
+        if (g_web_clients.isEmpty()) {
+            std::fprintf(stderr, "[session] 无浏览器会话连接，自动退出进程（防止资源泄漏）.\n");
+            std::fflush(stderr);
+            if (QCoreApplication *ap = QCoreApplication::instance())
+                ap->quit();
+        }
+    });
+    g_web_exitTimer->start(g_web_exitDelaySec * 1000);
+}
+
+void cancelAutoExit() {
+    if (g_web_exitTimer) {
+        g_web_exitTimer->stop();
+        g_web_exitTimer->deleteLater();
+        g_web_exitTimer = nullptr;
+    }
+}
+
 // 协议编辑状态（前端编辑、apply 前暂存）。
 std::vector<sd::FieldDesc> g_web_fields;
 QString g_web_endian = "little";
@@ -264,6 +306,8 @@ void handleWebCommand(QTcpSocket *s, const QJsonObject &obj) {
         resp["stopBits"] = g_web_stopBits;
         resp["parity"] = g_web_parity;
         resp["flow"] = g_web_flow;
+        resp["autoExit"] = g_web_autoExit;
+        resp["exitDelay"] = g_web_exitDelaySec;
     } else if (cmd == "setsettings") {
         if (obj.contains("theme"))  g_web_theme  = obj.value("theme").toString();
         if (obj.contains("lang"))   g_web_lang   = obj.value("lang").toString();
@@ -273,6 +317,12 @@ void handleWebCommand(QTcpSocket *s, const QJsonObject &obj) {
         if (obj.contains("stopBits")) g_web_stopBits = obj.value("stopBits").toInt(1);
         if (obj.contains("parity"))  g_web_parity = obj.value("parity").toString();
         if (obj.contains("flow"))    g_web_flow   = obj.value("flow").toString();
+        if (obj.contains("autoExit")) {
+            g_web_autoExit = obj.value("autoExit").toBool();
+            // 关闭自动退出时，取消已调度的退出倒计时。
+            if (!g_web_autoExit) cancelAutoExit();
+        }
+        if (obj.contains("exitDelay")) g_web_exitDelaySec = qMax(1, obj.value("exitDelay").toInt(5));
         resp["ok"] = true;
     } else if (cmd == "applyproto") {
         sd::ProtocolSchema schema;
@@ -376,6 +426,9 @@ int runWeb(QCoreApplication& app, int port, bool openBrowser) {
                         s->flush();
                         g_web_clients.insert(s);
                         g_web_buf.remove(s);
+                        // 有新会话接入：取消自动退出，并广播会话数。
+                        cancelAutoExit();
+                        broadcastSessions();
                         return;
                     }
                 }
@@ -403,11 +456,16 @@ int runWeb(QCoreApplication& app, int port, bool openBrowser) {
                 g_web_clients.remove(s);
                 g_web_buf.remove(s);
                 s->deleteLater();
+                // 会话数变化：广播，并在无会话时调度自动退出。
+                broadcastSessions();
+                scheduleAutoExit();
             });
             QObject::connect(s, &QAbstractSocket::errorOccurred, [s]() {
                 // 出错时清理，避免悬挂引用
                 g_web_clients.remove(s);
                 g_web_buf.remove(s);
+                broadcastSessions();
+                scheduleAutoExit();
             });
         }
     });

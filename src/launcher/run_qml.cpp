@@ -28,6 +28,11 @@ int runQml(QGuiApplication& app) {
     QQmlApplicationEngine engine;
     engine.rootContext()->setContextProperty("serialWorker", &worker);
 
+    // Main.qml 在 qrc:/qml/，四个页面文件在 qrc:/qml/pages/ 子目录。
+    // QML 以裸类型名引用子目录 QML（如 VizPage）时，必须把该目录加入
+    // import path，否则在部分构建/部署环境下报 "VizPage is not a type"。
+    engine.addImportPath(QStringLiteral("qrc:/qml/pages"));
+
     const QUrl url(QStringLiteral("qrc:/qml/Main.qml"));
     QObject::connect(&engine, &QQmlApplicationEngine::objectCreated,
                      &app, [url](QObject *obj, const QUrl &objUrl) {

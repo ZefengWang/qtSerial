@@ -146,7 +146,7 @@ private:
   QWidget *protoLayoutBar_ = nullptr;       // 条状分段容器
   QWidget *protoLayoutLegend_ = nullptr;    // 图例容器
   QBoxLayout *protoLayoutBarLayout_ = nullptr;   // 条状分段水平布局
-  QGridLayout *protoLayoutLegendLayout_ = nullptr; // 图例网格布局（多列左对齐）
+  QLayout *protoLayoutLegendLayout_ = nullptr;   // 图例流式布局（Flex-wrap）
 
   // 可视化实例（Qt 侧展示）
   QVector<ViewInstanceUi> vizViews_;

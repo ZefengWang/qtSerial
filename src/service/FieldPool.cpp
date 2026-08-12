@@ -8,7 +8,7 @@ void FieldPool::setSchema(const ProtocolSchema& schema) {
     hasDataFields_ = false;
 
     for (const auto& fd : schema_.fields) {
-        if (fd.isPadding) continue; // padding 只占位，不产出数据源
+        if (fd.isPadding || !fd.dataSource) continue; // padding/未勾选 → 不产出数据源
         FieldSource fs;
         fs.name      = fd.name;
         fs.type      = fd.type;

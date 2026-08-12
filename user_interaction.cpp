@@ -41,6 +41,13 @@ static QString parityShortName(int parity) {
     }
 }
 
+// 可视化类型的短名（对齐原型：标题/图例用"波形"而非"波形图"）
+static QString vizShortTypeName(const QString &typeName) {
+    if (typeName == QStringLiteral("波形图")) return QStringLiteral("波形");
+    if (typeName == QStringLiteral("数据表格")) return QStringLiteral("表格");
+    return typeName; // "3D姿态" 等原样
+}
+
 // ============================================================
 // 自绘帧布局主色条：整体圆角 + 细边框 + 无缝分段 + 字段名
 // 对齐原型 .layout-main（overflow:hidden 圆角裁剪）。
@@ -89,6 +96,67 @@ private:
 };
 
 // ============================================================
+// FlowLayout：实现 flex-wrap 式流式布局（对齐原型 .layout-legend）。
+// 图例项随容器宽度自动换行，而不是固定列数。
+// ============================================================
+class FlowLayout : public QLayout {
+public:
+    explicit FlowLayout(QWidget *parent = nullptr, int margin = 0, int hSpacing = 12, int vSpacing = 4)
+        : QLayout(parent), m_hSpace(hSpacing), m_vSpace(vSpacing) {
+        setContentsMargins(margin, margin, margin, margin);
+    }
+    ~FlowLayout() { while (QLayoutItem *item = takeAt(0)) delete item; }
+
+    void addItem(QLayoutItem *item) override { itemList.append(item); }
+    int count() const override { return itemList.size(); }
+    QLayoutItem *itemAt(int index) const override { return itemList.value(index); }
+    QLayoutItem *takeAt(int index) override {
+        if (index >= 0 && index < itemList.size()) return itemList.takeAt(index);
+        return nullptr;
+    }
+    Qt::Orientations expandingDirections() const override { return Qt::Orientations(); }
+    bool hasHeightForWidth() const override { return true; }
+    int heightForWidth(int width) const override { return doLayout(QRect(0, 0, width, 0), true); }
+    void setGeometry(const QRect &rect) override { QLayout::setGeometry(rect); doLayout(rect, false); }
+    QSize sizeHint() const override { return minimumSize(); }
+    QSize minimumSize() const override {
+        QSize size;
+        for (const QLayoutItem *item : itemList) size = size.expandedTo(item->minimumSize());
+        const QMargins m = contentsMargins();
+        size += QSize(m.left() + m.right(), m.top() + m.bottom());
+        return size;
+    }
+
+private:
+    int doLayout(const QRect &rect, bool testOnly) const {
+        int left, top, right, bottom;
+        getContentsMargins(&left, &top, &right, &bottom);
+        QRect effectiveRect = rect.adjusted(left, top, -right, -bottom);
+        int x = effectiveRect.x();
+        int y = effectiveRect.y();
+        int lineHeight = 0;
+        for (QLayoutItem *item : itemList) {
+            int spaceX = m_hSpace;
+            int spaceY = m_vSpace;
+            QSize itemSize = item->sizeHint();
+            if (x + itemSize.width() > effectiveRect.right() + 1 && lineHeight > 0) {
+                x = effectiveRect.x();
+                y += lineHeight + spaceY;
+                lineHeight = 0;
+            }
+            if (!testOnly) item->setGeometry(QRect(QPoint(x, y), itemSize));
+            x += itemSize.width() + spaceX;
+            lineHeight = qMax(lineHeight, itemSize.height());
+        }
+        return y + lineHeight - rect.y() + bottom;
+    }
+
+    QList<QLayoutItem *> itemList;
+    int m_hSpace;
+    int m_vSpace;
+};
+
+// ============================================================
 // 私有辅助：一个可绘制波形/3D 姿态的视图卡片。
 // 直接以自定义绘制实现，避免额外依赖 charts 模块（环境无 QtCharts）。
 // ============================================================
@@ -105,7 +173,7 @@ public:
     }
 
     void pushSample(const sd::Frame &frame) {
-        if (typeName_ == QLatin1String("3D姿态"))
+        if (typeName_ == QStringLiteral("3D姿态"))
             push3D(frame);
         else
             pushWave(frame);
@@ -135,18 +203,11 @@ protected:
         for (int x = 0; x < width(); x += step) p.drawLine(x, 0, x, height());
         for (int y = 0; y < height(); y += step) p.drawLine(0, y, width(), y);
 
-        if (typeName_ == QLatin1String("3D姿态")) {
+        if (typeName_ == QStringLiteral("3D姿态")) {
             draw3D(p);
         } else {
             drawWave(p);
         }
-
-        // 字段图例
-        int lx = 8, ly = 14;
-        p.setPen(Qt::white);
-        p.drawText(8, height() - 8,
-                   QString("%1 · %2").arg(typeName_, fields_.join(" + ")));
-        Q_UNUSED(lx); Q_UNUSED(ly);
     }
 
 private:
@@ -365,7 +426,9 @@ serial::serial(QWidget *parent) :
   protoLayoutBar_ = ui->framePreviewBar;
   protoLayoutBarLayout_ = qobject_cast<QHBoxLayout*>(ui->framePreviewBar->layout());
   protoLayoutLegend_ = ui->framePreviewLegend;
-  protoLayoutLegendLayout_ = qobject_cast<QGridLayout*>(ui->framePreviewLegend->layout());
+  // 图例容器改用 FlowLayout（flex-wrap 流式，随宽度自动换行）
+  protoLayoutLegendLayout_ = new FlowLayout(protoLayoutLegend_, 0, 12, 4);
+  ui->framePreviewLegend->setLayout(protoLayoutLegendLayout_);
   renderProtoLayoutPreview();
 
   // 初始化可视化源列表
@@ -389,6 +452,36 @@ serial::serial(QWidget *parent) :
 
   // 初始化设置页（主题/语言/串口内联控件）
   initSettingsPage();
+
+  // [TMP-DEBUG] 注入示例字段并创建视图，截图对比原型
+  QTimer::singleShot(500, this, [this](){
+      // 协议解析页注入 20 个字段
+      ui->navList->setCurrentRow(2);
+      on_navList_currentRowChanged(2);
+      protoFields_.clear();
+      for (int i = 0; i < 20; ++i) {
+          sd::FieldDesc fd;
+          fd.name = QString("field%1").arg(i+1).toStdString();
+          fd.type = sd::FieldType::F32;
+          fd.byteLength = -1;
+          protoFields_.append(fd);
+          addProtoRow(fd);
+      }
+      // 应用协议
+      ui->protoNameEdit->setText("cust");
+      on_applySchemaButton_clicked();
+
+      // 切到可视化配置页，勾选前3个字段并创建波形视图
+      ui->navList->setCurrentRow(3);
+      on_navList_currentRowChanged(3);
+      refreshVizSources();
+      for (int i = 0; i < ui->vizSourceList->count(); ++i) {
+          if (i < 3) ui->vizSourceList->item(i)->setCheckState(Qt::Checked);
+          else ui->vizSourceList->item(i)->setCheckState(Qt::Unchecked);
+      }
+      ui->vizTypeCombo->setCurrentIndex(0);
+      on_addViewButton_clicked();
+  });
 }
 
 serial::~serial(){
@@ -965,9 +1058,7 @@ void serial::renderProtoLayoutPreview() {
                       "background:transparent;").arg(legendColor));
     ldl->addWidget(sw);
     ldl->addWidget(tx);
-    const int kLegendCols = 4;
-    protoLayoutLegendLayout_->addWidget(
-        ldw, i / kLegendCols, i % kLegendCols, Qt::AlignLeft | Qt::AlignVCenter);
+    protoLayoutLegendLayout_->addWidget(ldw);
   }
 
   // 自绘主色条（整体圆角 + 边框 + 无缝分段）
@@ -978,8 +1069,8 @@ void serial::renderProtoLayoutPreview() {
   bar->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
   protoLayoutBarLayout_->addWidget(bar);
 
-  // 图例紧凑左对齐：固定为内容尺寸，配合 VBox 左对齐，避免 QGridLayout 横向均分拉伸
-  protoLayoutLegendLayout_->setSizeConstraint(QLayout::SetFixedSize);
+  // 图例通栏流式换行：容器为 Expanding 全宽，FlowLayout 依据宽度自动换行，
+  // 不再用 SetFixedSize（否则会被压成单列）。
   protoLayoutLegend_->updateGeometry();
 }
 
@@ -1066,6 +1157,9 @@ void serial::collectSchemaFromTable() {
     QString typeTxt = ui->protoTable->item(r, 2)->text();
     fd.isPadding = (typeTxt == "padding");
     if (!fd.isPadding) fd.type = comboToFieldType(typeTxt);
+    // 勾选列 → 是否作为可视化数据源（字段池）
+    QTableWidgetItem *sel = ui->protoTable->item(r, 0);
+    fd.dataSource = (sel && sel->checkState() == Qt::Checked);
     // 长度从表格文本解析（去掉 "B"）
     QString lenTxt = ui->protoTable->item(r, 3)->text();
     lenTxt.chop(1);
@@ -1162,20 +1256,26 @@ void serial::addVizViewCard(const ViewInstanceUi &vi) {
   v->setContentsMargins(8, 8, 8, 8);
   v->setSpacing(6);
 
-  // 标题行：类型 + 字段 + 关闭按钮
+  // 标题行：紧凑，["视图A · 波形"] + "数据源: f1 + f2" + 关闭按钮（右）
   QWidget *head = new QWidget();
   QHBoxLayout *hh = new QHBoxLayout(head);
-  hh->setContentsMargins(0, 0, 0, 0);
-  QLabel *title = new QLabel(QString("%1 · %2").arg(vi.title, vi.typeName));
-  title->setStyleSheet("font-weight: bold; color: #7aa2f7;");
-  QLabel *fieldsLabel = new QLabel(vi.fields.join(" + "));
-  fieldsLabel->setStyleSheet("color: #8090a0;");
+  hh->setContentsMargins(2, 0, 2, 0);
+  hh->setSpacing(8);
+  QLabel *title = new QLabel(QString("%1 · %2").arg(vi.title, vizShortTypeName(vi.typeName)));
+  title->setStyleSheet("font-weight: bold; color: #7aa2f7; background: transparent;");
+  QLabel *fieldsLabel = new QLabel(tr("数据源: %1").arg(vi.fields.join(" + ")));
+  fieldsLabel->setStyleSheet("color: #8090a0; background: transparent;");
   hh->addWidget(title);
   hh->addWidget(fieldsLabel);
   hh->addStretch();
-  QPushButton *closeBtn = new QPushButton("✕");
-  closeBtn->setFixedSize(22, 22);
+  QPushButton *closeBtn = new QPushButton(QStringLiteral("✕"));
+  closeBtn->setFixedSize(20, 20);
   closeBtn->setCursor(Qt::PointingHandCursor);
+  closeBtn->setToolTip(tr("关闭视图"));
+  closeBtn->setStyleSheet(
+      "QPushButton{border:none;border-radius:10px;background:rgba(127,132,151,.35);"
+      "color:#e0e4f0;font-weight:bold;}"
+      "QPushButton:hover{background:#f7768e;color:#fff;}");
   connect(closeBtn, &QPushButton::clicked, this, [this, vi]() {
       removeVizView(vi.viewId);
   });
@@ -1190,6 +1290,37 @@ void serial::addVizViewCard(const ViewInstanceUi &vi) {
   plot->pushEmpty(); // 初始演示曲线
   plot->setMinimumHeight(140);
   v->addWidget(plot);
+
+  // 底部图例行（对齐原型 legend-line）：彩色小方块 + 字段名 + 类型标注
+  static const QString kLegendPalette[] = {
+      "#7aa2f7", "#9ece6a", "#e0af68", "#f7768e",
+      "#bb9af7", "#2ac3de", "#73daca", "#ff9e64"};
+  QWidget *legend = new QWidget();
+  QHBoxLayout *lg = new QHBoxLayout(legend);
+  lg->setContentsMargins(2, 0, 2, 0);
+  lg->setSpacing(10);
+  for (int i = 0; i < vi.fields.size(); ++i) {
+      QWidget *ld = new QWidget();
+      QHBoxLayout *ldl = new QHBoxLayout(ld);
+      ldl->setContentsMargins(0, 0, 0, 0);
+      ldl->setSpacing(4);
+      QFrame *sw = new QFrame();
+      sw->setFixedSize(10, 10);
+      sw->setStyleSheet(QString("background:%1;border:none;border-radius:2px;")
+                          .arg(kLegendPalette[i % 8]));
+      QLabel *tx = new QLabel(vi.fields.at(i));
+      tx->setStyleSheet("color:#8090a0;background:transparent;font-size:10px;");
+      ldl->addWidget(sw);
+      ldl->addWidget(tx);
+      lg->addWidget(ld);
+  }
+  lg->addStretch();
+  QLabel *typeTag = new QLabel(vi.fields.size() > 1
+      ? tr("%1 · 多数据源").arg(vizShortTypeName(vi.typeName))
+      : tr("%1 · 单数据源").arg(vizShortTypeName(vi.typeName)));
+  typeTag->setStyleSheet("color:#8090a0;background:transparent;font-size:10px;");
+  lg->addWidget(typeTag);
+  v->addWidget(legend);
 
   ui->vizCanvasContainer->layout()->addWidget(card);
 }
@@ -1233,7 +1364,7 @@ void serial::on_addViewButton_clicked() {
   ViewInstanceUi vi;
   vi.viewId = QString::fromStdString(viewId);
   vi.typeName = typeName;
-  vi.title = typeName;
+  vi.title = tr("视图%1").arg(QChar(static_cast<ushort>(QChar('A').unicode() + vizViews_.size())));
   vi.fields = selected;
   vizViews_.append(vi);
 

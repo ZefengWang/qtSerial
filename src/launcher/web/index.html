@@ -158,6 +158,7 @@ button:disabled{opacity:.4;cursor:not-allowed}
   <span id="status" class="st off">○ 未连接</span>
   <span class="meta" id="connectionMeta"></span>
   <span class="meta" id="portsMeta"></span>
+  <span class="meta" id="sessionMeta"></span>
 </div>
 
 <!-- ===== 横向标签页（对齐原型 pg-tabs）===== -->
@@ -303,6 +304,7 @@ button:disabled{opacity:.4;cursor:not-allowed}
         <div class="set-nav card">
           <div class="set-nav-item active" data-s="soft">软件设置</div>
           <div class="set-nav-item" data-s="serial">高级串口设置</div>
+          <div class="set-nav-item" data-s="session">会话管理</div>
           <div class="set-nav-item" data-s="plugin">插件管理</div>
         </div>
         <div class="set-body card">
@@ -341,6 +343,18 @@ button:disabled{opacity:.4;cursor:not-allowed}
             </div>
           </div>
 
+          <!-- 会话管理 -->
+          <div class="set-pane" id="set-session">
+            <h3>会话管理</h3>
+            <div class="set-field"><label>当前浏览器连接数</label>
+              <div class="box" id="sessionCount">0</div></div>
+            <div class="set-field"><label>无浏览器会话时自动退出进程</label>
+              <select id="setAutoExit"><option value="1" selected="">是（防止资源泄漏）</option><option value="0">否（常驻后台）</option></select></div>
+            <div class="set-field"><label>退出延迟（秒）</label>
+              <input id="setExitDelay" type="number" value="5" min="1"></div>
+            <div class="hint">所有浏览器标签页关闭后，后台服务在延迟后将自动退出进程，避免残留串口占用与资源泄漏。关闭页面时若串口仍处于打开状态，会先提示你关闭串口。</div>
+          </div>
+
           <!-- 插件管理 -->
           <div class="set-pane" id="set-plugin">
             <h3>插件管理</h3>
@@ -357,6 +371,7 @@ button:disabled{opacity:.4;cursor:not-allowed}
 <script>
 "use strict";
 var ws = new WebSocket('ws://'+location.host);
+var serialOpen = false;   // 串口是否打开（用于关闭页面时提示先关串口）
 var SVC = {
   port: document.getElementById('port'),
   baud: document.getElementById('baud'),
@@ -426,6 +441,7 @@ ws.onmessage = function(e){
     if(m.numeric){ for(var f in m.numeric){ pushWave(f, Number(m.numeric[f])); } }
   }
   if(m.type==='status'){
+    serialOpen = !!m.open;
     SVC.status.innerHTML = (m.open?'● 已连接':'○ 未连接');
     SVC.status.className = 'st'+(m.open?'':' off');
     SVC.connDot.className='dot'+(m.open?' on':'');
@@ -433,6 +449,10 @@ ws.onmessage = function(e){
     SVC.termDot.className='dot'+(m.open?' on':'');
     SVC.termConnText.textContent = m.open?'已连接':'未连接';
     document.getElementById('openBtn').textContent = m.open?'关闭串口':'打开串口';
+  }
+  if(m.type==='session'){
+    document.getElementById('sessionCount').textContent = m.count;
+    document.getElementById('sessionMeta').textContent = m.count+' 会话';
   }
   if(m.type==='ports'){
     SVC.port.innerHTML='';
@@ -450,8 +470,20 @@ ws.onmessage = function(e){
     document.getElementById('vizEndian').textContent = m.endian||'小端';
     renderSources();
   }
+  if(m.type==='settings'){
+    if(m.theme) document.getElementById('setTheme').value = m.theme;
+    if(m.lang) document.getElementById('setLang').value = m.lang;
+    if(m.autobrowse!=null) document.getElementById('setAutoBrowse').value = m.autobrowse ? '1' : '0';
+    if(m.timerMs) document.getElementById('setTimerMs').value = m.timerMs;
+    if(m.dataBits) document.getElementById('advDataBits').value = m.dataBits;
+    if(m.stopBits) document.getElementById('advStopBits').value = m.stopBits;
+    if(m.parity) document.getElementById('advParity').value = m.parity;
+    if(m.flow) document.getElementById('advFlow').value = m.flow;
+    if(m.autoExit!=null) document.getElementById('setAutoExit').value = m.autoExit ? '1' : '0';
+    if(m.exitDelay) document.getElementById('setExitDelay').value = m.exitDelay;
+  }
 };
-ws.onopen = function(){ ws.send(JSON.stringify({cmd:'list'})); ws.send(JSON.stringify({cmd:'getproto'})); };
+ws.onopen = function(){ ws.send(JSON.stringify({cmd:'list'})); ws.send(JSON.stringify({cmd:'getproto'})); ws.send(JSON.stringify({cmd:'getsettings'})); };
 
 function bytesToHex(arr){
   var s=''; for(var i=0;i<arr.length;i++){ s+=(arr[i]<16?'0':'')+arr[i].toString(16).toUpperCase()+' '; } return s.trim();
@@ -557,10 +589,20 @@ function sendSettings(){
     dataBits:parseInt(document.getElementById('advDataBits').value)||8,
     stopBits:parseInt(document.getElementById('advStopBits').value)||1,
     parity:document.getElementById('advParity').value,
-    flow:document.getElementById('advFlow').value}));
+    flow:document.getElementById('advFlow').value,
+    autoExit:document.getElementById('setAutoExit').value==='1',
+    exitDelay:parseInt(document.getElementById('setExitDelay').value)||5}));
 }
-['setTheme','setLang','setAutoBrowse','setTimerMs','advDataBits','advStopBits','advParity','advFlow'].forEach(function(id){
+['setTheme','setLang','setAutoBrowse','setTimerMs','advDataBits','advStopBits','advParity','advFlow','setAutoExit','setExitDelay'].forEach(function(id){
   document.getElementById(id).addEventListener('change', sendSettings);
+});
+
+// 关闭/刷新页面时：若串口仍打开，触发浏览器原生"离开站点"确认，提示先关闭串口。
+window.addEventListener('beforeunload', function(e){
+  if(serialOpen){
+    e.preventDefault();
+    e.returnValue = '';
+  }
 });
 document.getElementById('advApply').onclick=function(){
   sendSettings();
