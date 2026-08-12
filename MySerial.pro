@@ -9,12 +9,9 @@ QT       += core gui serialport
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
-# Use C++17 for Qt6, C++11 for Qt5 (for broader compatibility)
-greaterThan(QT_MAJOR_VERSION, 5) {
-    CONFIG += c++17
-} else {
-    CONFIG += c++11
-}
+# 三层架构依赖 C++17（generic lambda、make_unique 等）。
+# Qt5 与 Qt6 统一使用 C++17；现代 gcc/clang 均支持。
+CONFIG += c++17
 # Executable name: lowercase (release/install name must match .desktop Exec & StartupWMClass)
 TARGET = serial-debug
 TEMPLATE = app
@@ -40,12 +37,21 @@ SOURCES += \
     languagemanager.cpp \
     src/ui/SerialWorker.cpp \
     src/io/SerialSource.cpp \
+    src/io/PortMonitor.cpp \
     src/service/EventBus.cpp \
     src/service/Session.cpp \
+    src/service/ProtocolEngine.cpp \
+    src/service/FieldPool.cpp \
+    src/service/ViewManager.cpp \
     src/core/IClock.cpp \
+    src/core/FakeSource.cpp \
     src/core/buffer/RingBuffer.cpp \
     src/core/buffer/AppendBuffer.cpp \
     src/core/buffer/DoubleBuffer.cpp \
+    src/protocol/LineProtocol.cpp \
+    src/protocol/CsvProtocol.cpp \
+    src/protocol/GenericBinaryProtocol.cpp \
+    src/protocol/ProtocolRegistry.cpp \
     src/plugin/PluginRegistry.cpp
 
 HEADERS  += \
@@ -55,15 +61,27 @@ HEADERS  += \
     languagemanager.h \
     src/ui/SerialWorker.hpp \
     src/io/SerialSource.hpp \
+    src/io/PortMonitor.hpp \
     src/service/EventBus.hpp \
     src/service/Session.hpp \
+    src/service/ProtocolEngine.hpp \
+    src/service/FieldPool.hpp \
+    src/service/ViewManager.hpp \
     src/core/DataSource.hpp \
     src/core/IClock.hpp \
     src/core/PortConfig.hpp \
+    src/core/Frame.hpp \
+    src/core/FieldSchema.hpp \
+    src/core/FakeSource.hpp \
     src/core/buffer/IBufferStrategy.hpp \
     src/core/buffer/RingBuffer.hpp \
     src/core/buffer/AppendBuffer.hpp \
     src/core/buffer/DoubleBuffer.hpp \
+    src/protocol/IProtocol.hpp \
+    src/protocol/LineProtocol.hpp \
+    src/protocol/CsvProtocol.hpp \
+    src/protocol/GenericBinaryProtocol.hpp \
+    src/protocol/ProtocolRegistry.hpp \
     src/plugin/IPlugin.hpp \
     src/plugin/IViewHost.hpp \
     src/plugin/PluginRegistry.hpp
