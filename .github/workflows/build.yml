@@ -421,19 +421,17 @@ jobs:
 
           NOTES="## Serial Debug Assistant v${{ env.APP_VERSION }}
 
-          ### 本版本修复 / v${{ env.APP_VERSION }} Fixes
-          - 修复应用无图标（改用 PNG 图标，Linux 下正常显示）
-          - Fixed missing app icon (switched to PNG, displays correctly on Linux)
-          - 修复左侧串口配置侧边栏消失的问题
-          - Fixed the left serial-config sidebar disappearing
-          - 菜单栏新增 Settings → Advanced Settings 入口，可修改波特率等参数
-          - Added Settings → Advanced Settings menu entry (baud rate, data bits, parity, etc.)
-          - 切换语言即时生效，无需重启
-          - Language switching now takes effect immediately
-          - 可执行文件更名为小写 serial-debug
-          - Executable renamed to lowercase 'serial-debug'
-          - 完善 .desktop 文件（StartupWMClass/BinaryPattern），应用菜单正确显示与启动
-          - Improved .desktop file (StartupWMClass/BinaryPattern) for correct menu integration
+          ### 本版本新增 / v${{ env.APP_VERSION }} Highlights
+          - 四种 UI（Qt Widgets / QML / Web / TUI）统一对齐新 UI 原型：侧边栏改为顶部横向标签导航（基础 / 终端交互 / 协议解析 / 可视化配置 / 设置）
+          - All four UIs (Qt Widgets / QML / Web / TUI) now follow the new prototype: top horizontal tab navigation (Basic / Terminal / Protocol / Visualization / Settings)
+          - 新增"设置"页，三类配置集中管理：软件设置（主题 / 语言 / 自动开浏览器 / 定时发送间隔）、高级串口设置（数据位 / 停止位 / 校验 / 流控）、插件管理（规划中）
+          - Added a Settings page with three categories: Software, Advanced Serial (data/stop/parity/flow, now inline panel), and Plugin Management (planned)
+          - 高级串口设置由模态窗改为设置页内联面板
+          - Advanced serial settings moved from a modal dialog to an inline panel
+          - 协议解析新增字段功能修复，可正常添加/编辑字段
+          - Fixed adding fields in the Protocol Parsing module
+          - 启用 QML 宿主构建（HAVE_QML），QML 界面随主程序一起编译
+          - Enabled the QML host build (HAVE_QML); the QML UI now compiles with the main binary
 
           ### 下载说明 / Download
           - **deb 包**：直接下载 .deb 文件（无需解压 zip）。
