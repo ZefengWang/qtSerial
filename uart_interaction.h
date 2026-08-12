@@ -100,6 +100,15 @@ private:
   void syncSerialSettingsLeftToSettingsPage();
   void syncSerialSettingsSettingsPageToLeft();
 
+  // 基础页"8 N 1"合并输入框：解析并写回 config
+  void applyDataBitsFieldToConfig();
+
+  // 更新高速串口设置区（最大数据消化能力 + 缓冲区策略说明）
+  void updateHighSpeedInfo(int strategyIdx);
+
+  // 当前选中的缓冲区策略（0=环形,1=双缓冲,2=追加），打开串口时应用到 worker
+  int bufferStrategy_ = 0;
+
   // 协议解析辅助
   void addProtoRow(const sd::FieldDesc &fd);
   void rebuildProtoTable(const std::vector<sd::FieldDesc> &fields);

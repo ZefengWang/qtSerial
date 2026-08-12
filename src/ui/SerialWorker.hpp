@@ -11,6 +11,7 @@ namespace sd {
 struct PortConfig;
 class SerialSource;
 class RingBuffer;
+class IBufferStrategy;
 class Session;
 class EventBus;
 class SteadyClock;
@@ -58,6 +59,10 @@ public:
     sd::PortConfig& config();
     const sd::PortConfig& config() const;
 
+    // 缓冲区策略：0=环形, 1=双缓冲, 2=追加。打开中调用无效，需在 open() 前设置。
+    void setBufferStrategy(int strategy);
+    int  bufferStrategy() const { return bufferStrategy_; }
+
     // 十六进制字符串 -> 字节数组（纯工具，供发送框 HEX 模式使用）。
     static QByteArray hexStringToByteArray(const QString& hex);
 
@@ -86,7 +91,7 @@ private:
 
     sd::SteadyClock* clock_ = nullptr;
     sd::SerialSource* source_ = nullptr;
-    sd::RingBuffer*   buffer_ = nullptr;
+    sd::IBufferStrategy* buffer_ = nullptr;
     sd::Session*      session_ = nullptr;
     sd::EventBus*     bus_ = nullptr;
     sd::ProtocolEngine* protoEngine_ = nullptr;
@@ -94,6 +99,7 @@ private:
     QTimer            pollTimer_;
     sd::PortConfig*   config_ = nullptr;
     bool              open_ = false;
+    int               bufferStrategy_ = 0; // 0=环形, 1=双缓冲, 2=追加
 };
 
 #endif // SRC_UI_SERIAL_WORKER_HPP

@@ -2,5 +2,7 @@
 *.qm
 build/
 build-*/
+build_verify/
 deploy/
 *.AppImage
+*.bak

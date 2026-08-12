@@ -212,8 +212,8 @@ h4.h .tag{font-family:var(--font-mono);font-size:10.5px;color:var(--accent);back
 <div class="topbar">
   <div class="brand"><span class="dot"></span> 串口调试助手 · UI 原型</div>
   <div class="variant-switch" role="tablist">
-    <button class="variant-btn" data-v="base" type="button">基础+发送</button>
-    <button class="variant-btn active" data-v="term" type="button">终端交互</button>
+    <button class="variant-btn active" data-v="base" type="button">基础+发送</button>
+    <button class="variant-btn" data-v="term" type="button">终端交互</button>
     <button class="variant-btn" data-v="proto" type="button">协议解析</button>
     <button class="variant-btn" data-v="viz" type="button">可视化配置</button>
     <button class="variant-btn" data-v="set" type="button">设置</button>
@@ -236,7 +236,7 @@ h4.h .tag{font-family:var(--font-mono);font-size:10.5px;color:var(--accent);back
   </div>
 
   <!-- ============ 01 基础界面 ============ -->
-  <section class="variant-panel" id="panel-base">
+  <section class="variant-panel active" id="panel-base">
     <h2 class="sec"><span class="num">01</span>基础文本界面（含发送）</h2>
     <p class="sec-sub">不只是收信息，而是<b>收发一体</b>：文本日志 + 完整发送区（输入、按钮、HEX/定时/换行）。</p>
     <div class="frame-box">
@@ -309,7 +309,7 @@ h4.h .tag{font-family:var(--font-mono);font-size:10.5px;color:var(--accent);back
   </section>
 
   <!-- ============ 02 终端交互 ============ -->
-  <section class="variant-panel active" id="panel-term">
+  <section class="variant-panel" id="panel-term">
     <h2 class="sec"><span class="num">02</span>终端交互界面</h2>
     <p class="sec-sub">连接的是<b>交互式设备</b>（如 Linux 终端、shell、串口命令行），支持<b>敲命令并回显</b>，与基础文本界面独立。</p>
     <div class="frame-box">

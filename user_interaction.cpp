@@ -29,6 +29,17 @@
 #include <QComboBox>
 #include <cmath>
 
+// 校验位缩写：0=None,1=Even,2=Odd,3=Space,4=Mark
+static QString parityShortName(int parity) {
+    switch (parity) {
+        case 1: return QLatin1String("E");
+        case 2: return QLatin1String("O");
+        case 3: return QLatin1String("S");
+        case 4: return QLatin1String("M");
+        default: return QLatin1String("N");
+    }
+}
+
 // ============================================================
 // 私有辅助：一个可绘制波形/3D 姿态的视图卡片。
 // 直接以自定义绘制实现，避免额外依赖 charts 模块（环境无 QtCharts）。
@@ -234,21 +245,18 @@ serial::serial(QWidget *parent) :
   // 刷新串口列表
   refreshPortList();
 
-  // 默认设置波特率为115200（第5项）
+  // 默认设置波特率为115200（第5项），并支持自定义输入
+  ui->baudComboBox->setEditable(true);
   ui->baudComboBox->setCurrentIndex(5);
 
-  // 初始化左侧数据位/校验/停止（从 worker_->config() 读取）
+  // 初始化左侧数据位/校验/停止（从 worker_->config() 读取，合并为 "8 N 1" 格式）
   const sd::PortConfig &cfg0 = worker_->config();
   {
-    QSignalBlocker b1(ui->dataBitsComboLeft);
-    QSignalBlocker b2(ui->parityComboLeft);
-    QSignalBlocker b3(ui->stopBitsComboLeft);
-    int di = ui->dataBitsComboLeft->findText(QString::number(cfg0.dataBits));
-    if (di >= 0) ui->dataBitsComboLeft->setCurrentIndex(di);
-    if (cfg0.parity >= 0 && cfg0.parity < ui->parityComboLeft->count())
-      ui->parityComboLeft->setCurrentIndex(cfg0.parity);
-    int si = ui->stopBitsComboLeft->findText(QString::number(cfg0.stopBits));
-    if (si >= 0) ui->stopBitsComboLeft->setCurrentIndex(si);
+    QSignalBlocker bf(ui->dataBitsField);
+    ui->dataBitsField->setText(QString("%1 %2 %3")
+        .arg(QString::number(cfg0.dataBits))
+        .arg(parityShortName(cfg0.parity))
+        .arg(QString::number(cfg0.stopBits, 'g', 2)));
   }
 
   // 数据经 EventBus 到达后，由 SerialWorker 转发为本信号
@@ -362,23 +370,38 @@ void serial::setupConnections() {
   connect(ui->refreshPortBtn, &QPushButton::clicked,
           this, &serial::on_refreshButton_clicked);
 
-  // 基础页：左侧数据位/校验/停止 与 worker_->config() 双向同步（改变即写回）
-  connect(ui->dataBitsComboLeft, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this](){
-      worker_->config().dataBits = ui->dataBitsComboLeft->currentText().toInt();
-      syncSerialSettingsLeftToSettingsPage();
-  });
-  connect(ui->parityComboLeft, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this](){
-      worker_->config().parity = ui->parityComboLeft->currentIndex();
-      syncSerialSettingsLeftToSettingsPage();
-  });
-  connect(ui->stopBitsComboLeft, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this](){
-      worker_->config().stopBits = ui->stopBitsComboLeft->currentText().toDouble();
-      syncSerialSettingsLeftToSettingsPage();
+  // 基础页：左侧数据位/校验/停止 合并单输入框("8 N 1")，编辑即写回 config
+  connect(ui->dataBitsField, &QLineEdit::editingFinished, this, [this](){
+      applyDataBitsFieldToConfig();
   });
 
-  // 波特率变更同步到 config（打开串口时读取）
-  connect(ui->baudComboBox, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this](){
-    worker_->config().baudRate = ui->baudComboBox->currentText().toInt();
+  // 波特率变更同步到 config（打开串口时读取），基础页/高级设置页均支持自定义
+  auto applyBaud = [this](QComboBox *cb){
+    bool ok = false;
+    const int v = cb->currentText().trimmed().toInt(&ok);
+    if (ok && v > 0) worker_->config().baudRate = v;
+  };
+  connect(ui->baudComboBox, &QComboBox::currentTextChanged,
+          this, [applyBaud, this](){ applyBaud(ui->baudComboBox); });
+  connect(ui->advBaudCombo, &QComboBox::currentTextChanged,
+          this, [applyBaud, this](){ applyBaud(ui->advBaudCombo); });
+
+  // 高级设置页：可用串口下拉选择 -> 同步到基础页端口与 config
+  connect(ui->advPortCombo, QOverload<int>::of(&QComboBox::currentIndexChanged),
+          this, [this](int){
+    const QString p = ui->advPortCombo->currentText();
+    if (p.isEmpty()) return;
+    const int idx = ui->portComboBox->findText(p);
+    QSignalBlocker b(ui->portComboBox);
+    if (idx >= 0) ui->portComboBox->setCurrentIndex(idx);
+    worker_->config().name = p.toStdString();
+  });
+
+  // 高级设置页：缓冲区策略选择（打开中禁切，见 updateConnectionStatus）
+  connect(ui->bufferStrategyCombo, QOverload<int>::of(&QComboBox::currentIndexChanged),
+          this, [this](int idx){
+    bufferStrategy_ = idx;
+    updateHighSpeedInfo(idx);
   });
 }
 
@@ -433,12 +456,15 @@ void serial::loadStyleSheet() {
 void serial::on_navList_currentRowChanged(int row) {
   if (row < 0 || row >= ui->stackedWidget->count()) return;
   ui->stackedWidget->setCurrentIndex(row);
-  const QStringList titles = {
-      tr("基础界面"), tr("终端交互"), tr("协议解析"), tr("可视化配置"), tr("设置")};
-  if (row < titles.size()) ui->pageTitleLabel->setText(titles.at(row));
 
   // 切到可视化页时刷新数据源列表
   if (row == 3) refreshVizSources();
+
+  // 切到基础页时，把基础页波特率显示同步为 config 当前值（含高级设置页自定义值）
+  if (row == 0) {
+    QSignalBlocker b(ui->baudComboBox);
+    ui->baudComboBox->setCurrentText(QString::number(worker_->config().baudRate));
+  }
 
   // 切到设置页时初始化（加载主题/语言/串口参数到控件）
   if (row == 4) initSettingsPage();
@@ -449,13 +475,17 @@ void serial::on_navList_currentRowChanged(int row) {
 // ============================================================
 void serial::refreshPortList() {
   QStringList serialStrList = worker_->scanPorts();
+  QSignalBlocker blocker(ui->advPortCombo);
   ui->portComboBox->clear();
+  ui->advPortCombo->clear();
   for (int i = 0; i < serialStrList.size(); i++) {
     ui->portComboBox->addItem(serialStrList[i]);
+    ui->advPortCombo->addItem(serialStrList[i]);
   }
   if (serialStrList.isEmpty()) {
 #if QT_VERSION >= QT_VERSION_CHECK(5, 15, 0)
     ui->portComboBox->setPlaceholderText(tr("No ports found"));
+    ui->advPortCombo->setPlaceholderText(tr("No ports found"));
 #endif
   }
 }
@@ -474,9 +504,16 @@ void serial::updateConnectionStatus(bool connected) {
     ui->refreshButton->setEnabled(false);
     ui->refreshPortBtn->setEnabled(false);
     ui->advancedSettingsBtn->setEnabled(false);
-    ui->dataBitsComboLeft->setEnabled(false);
-    ui->parityComboLeft->setEnabled(false);
-    ui->stopBitsComboLeft->setEnabled(false);
+    ui->dataBitsField->setEnabled(false);
+
+    // 打开期间：高级串口参数与缓冲区策略不可变更（不支持动态切换）
+    ui->advPortCombo->setEnabled(false);
+    ui->advBaudCombo->setEnabled(false);
+    ui->dataBitsCombo->setEnabled(false);
+    ui->stopBitsCombo->setEnabled(false);
+    ui->parityCombo->setEnabled(false);
+    ui->flowCtrlCombo->setEnabled(false);
+    ui->bufferStrategyCombo->setEnabled(false);
 
     ui->openPortButton->setText(tr("Close Port"));
 
@@ -498,15 +535,28 @@ void serial::updateConnectionStatus(bool connected) {
     ui->refreshButton->setEnabled(true);
     ui->refreshPortBtn->setEnabled(true);
     ui->advancedSettingsBtn->setEnabled(true);
-    ui->dataBitsComboLeft->setEnabled(true);
-    ui->parityComboLeft->setEnabled(true);
-    ui->stopBitsComboLeft->setEnabled(true);
+    ui->dataBitsField->setEnabled(true);
+
+    // 关闭后恢复高级串口参数与缓冲区策略可编辑
+    ui->advPortCombo->setEnabled(true);
+    ui->advBaudCombo->setEnabled(true);
+    ui->dataBitsCombo->setEnabled(true);
+    ui->stopBitsCombo->setEnabled(true);
+    ui->parityCombo->setEnabled(true);
+    ui->flowCtrlCombo->setEnabled(true);
+    ui->bufferStrategyCombo->setEnabled(true);
 
     ui->openPortButton->setText(tr("Open Port"));
 
     // 停止 RX 速率计时器
     rx_rate_timer_->stop();
     ui->rxRateValueLabel->setText("0 B/s");
+
+    // 关闭串口后重置收发计数（下次打开重新累计）
+    rx_quantity_ = 0;
+    tx_quantity_ = 0;
+    ui->rxCountLabel->setText("0");
+    ui->txCountLabel->setText("0");
 
     // 终端页状态
     ui->termStatusLabel->setText(tr("● Disconnected"));
@@ -560,9 +610,12 @@ void serial::on_openPortButton_clicked() {
   }
 
   if (!is_the_serial_port_open_) {
+    // 应用所选缓冲区策略（串口打开前生效，打开中不支持动态切换）
+    worker_->setBufferStrategy(bufferStrategy_);
+
     sd::PortConfig cfg = worker_->config();
     cfg.name = ui->portComboBox->currentText().toStdString();
-    cfg.baudRate = ui->baudComboBox->currentText().toInt();
+    // 波特率已由基础页/高级设置页共同写回 config，打开时直接采用（支持自定义）
     if (worker_->open(cfg)) {
       is_the_serial_port_open_ = true;
       updateConnectionStatus(true);
@@ -669,8 +722,9 @@ void serial::on_clearRecvButton_clicked() {
 }
 
 void serial::on_advancedSettingsBtn_clicked() {
-  // 高级串口设置已内联到「设置」页：直接切换到第5项（索引4）
-  ui->navList->setCurrentRow(4);
+  // 高级串口设置已内联到「设置」页：切换到设置页，并选中「高级串口设置」tab（索引1）
+  ui->navList->setCurrentRow(4);          // 设置页
+  ui->settingsNavList->setCurrentRow(1);  // 高级串口设置 tab（触发 settingsStack 切换到 pageSerial）
 }
 
 void serial::on_portComboBox_activated(const QString &arg1) {
@@ -1214,6 +1268,33 @@ void serial::initSettingsPage() {
 
   if (cfg.flowControl >= 0 && cfg.flowControl < ui->flowCtrlCombo->count())
     ui->flowCtrlCombo->setCurrentIndex(cfg.flowControl);
+
+  // 基础页波特率：同步 config（支持自定义值）
+  {
+    QSignalBlocker b(ui->baudComboBox);
+    ui->baudComboBox->setCurrentText(QString::number(cfg.baudRate));
+  }
+
+  // 高级设置页串口下拉：同步到已枚举列表
+  {
+    QSignalBlocker b(ui->advPortCombo);
+    const int pi = ui->advPortCombo->findText(QString::fromStdString(cfg.name));
+    if (pi >= 0) ui->advPortCombo->setCurrentIndex(pi);
+  }
+
+  // 高级设置页波特率
+  {
+    QSignalBlocker b(ui->advBaudCombo);
+    ui->advBaudCombo->setCurrentText(QString::number(cfg.baudRate));
+  }
+
+  // 高级设置页缓冲区策略 + 高速设置区信息
+  {
+    QSignalBlocker b(ui->bufferStrategyCombo);
+    if (bufferStrategy_ >= 0 && bufferStrategy_ < ui->bufferStrategyCombo->count())
+      ui->bufferStrategyCombo->setCurrentIndex(bufferStrategy_);
+  }
+  updateHighSpeedInfo(bufferStrategy_);
 }
 
 void serial::on_themeCombo_currentTextChanged(const QString &t) {
@@ -1282,12 +1363,53 @@ void serial::syncSerialSettingsLeftToSettingsPage() {
 }
 
 void serial::syncSerialSettingsSettingsPageToLeft() {
-  // 设置页内联 -> 左侧
+  // 设置页内联 -> 基础页左侧（合并为 "8 N 1" 形式）
   const sd::PortConfig &cfg = worker_->config();
-  int di = ui->dataBitsComboLeft->findText(QString::number(cfg.dataBits));
-  if (di >= 0) ui->dataBitsComboLeft->setCurrentIndex(di);
-  if (cfg.parity >= 0 && cfg.parity < ui->parityComboLeft->count())
-    ui->parityComboLeft->setCurrentIndex(cfg.parity);
-  int si = ui->stopBitsComboLeft->findText(QString::number(cfg.stopBits));
-  if (si >= 0) ui->stopBitsComboLeft->setCurrentIndex(si);
+  QSignalBlocker bf(ui->dataBitsField);
+  ui->dataBitsField->setText(QString("%1 %2 %3")
+      .arg(QString::number(cfg.dataBits))
+      .arg(parityShortName(cfg.parity))
+      .arg(QString::number(cfg.stopBits, 'g', 2)));
+}
+
+void serial::applyDataBitsFieldToConfig() {
+  // 解析 "8 N 1" -> dataBits/parity/stopBits，写回 config
+  const QString txt = ui->dataBitsField->text().trimmed();
+  const QStringList parts = txt.split(QLatin1Char(' '), Qt::SkipEmptyParts);
+  if (parts.size() < 3) return;
+  bool ok = false;
+  const int db = parts[0].toInt(&ok);
+  if (!ok || db < 5 || db > 8) return;
+  const QString p = parts[1].toUpper();
+  int parity = 0;
+  if (p == QLatin1String("E"))      parity = 1;
+  else if (p == QLatin1String("O")) parity = 2;
+  else if (p == QLatin1String("S")) parity = 3;
+  else if (p == QLatin1String("M")) parity = 4;
+  double sb = parts[2].toDouble(&ok);
+  if (!ok) return;
+  if (sb != 1.0 && sb != 1.5 && sb != 2.0) return;
+
+  sd::PortConfig &cfg = worker_->config();
+  cfg.dataBits = db;
+  cfg.parity   = parity;
+  cfg.stopBits = (int)sb;
+
+  // 回写规范化文本
+  QSignalBlocker bf(ui->dataBitsField);
+  ui->dataBitsField->setText(QString("%1 %2 %3")
+      .arg(db).arg(parityShortName(parity)).arg(QString::number(sb, 'g', 2)));
+}
+
+void serial::updateHighSpeedInfo(int strategyIdx) {
+  // 最大数据消化能力（估算值，随缓冲策略变化）与缓冲策略说明
+  static const char *kCaps[3] = { "约 210 MB/s", "约 180 MB/s", "约 320 MB/s" };
+  static const char *kHints[3] = {
+      "环形缓冲：固定容量、内存恒定，满则丢弃最旧数据，适合持续高速数据流（如波形采样、持续监控）。",
+      "双缓冲：生产者写后备区、消费者读前区，适合跨线程读写（串口线程生产 + UI 线程消费），降低覆盖风险。",
+      "追加缓冲：累积完整历史并在超限时裁剪最旧数据，适合需要完整接收日志且带内存上限保护的场景。",
+  };
+  if (strategyIdx < 0 || strategyIdx > 2) strategyIdx = 0;
+  ui->throughputCapLabel->setText(QString::fromUtf8(kCaps[strategyIdx]));
+  ui->bufferStrategyHint->setText(QString::fromUtf8(kHints[strategyIdx]));
 }

@@ -48,6 +48,8 @@ public:
 
     // 访问内部组件（测试用）
     IBufferStrategy* buffer() const { return buffer_; }
+    // 替换缓冲策略（需在 open() 之前调用；不持有所有权）
+    void setBuffer(IBufferStrategy* b) { buffer_ = b; }
     EventBus&        bus() { return bus_; }
     DataSource*      source() const { return source_; }
 

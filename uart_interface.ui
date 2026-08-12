@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8"?>
+<?xml version='1.0' encoding='UTF-8'?>
 <ui version="4.0">
  <class>serial</class>
  <widget class="QMainWindow" name="serial">
@@ -42,87 +42,6 @@
     <property name="bottomMargin">
      <number>0</number>
     </property>
-    <item>
-     <widget class="QWidget" name="appHeaderWidget">
-      <property name="minimumSize">
-       <size>
-        <width>0</width>
-        <height>44</height>
-       </size>
-      </property>
-      <property name="maximumSize">
-       <size>
-        <width>16777215</width>
-        <height>44</height>
-       </size>
-      </property>
-      <layout class="QHBoxLayout" name="appHeaderLayout">
-       <property name="spacing">
-        <number>10</number>
-       </property>
-       <property name="leftMargin">
-        <number>16</number>
-       </property>
-       <property name="topMargin">
-        <number>0</number>
-       </property>
-       <property name="rightMargin">
-        <number>16</number>
-       </property>
-       <property name="bottomMargin">
-        <number>0</number>
-       </property>
-       <item>
-        <widget class="QLabel" name="appIconLabel">
-         <property name="minimumSize">
-          <size>
-           <width>28</width>
-           <height>28</height>
-          </size>
-         </property>
-         <property name="maximumSize">
-          <size>
-           <width>28</width>
-           <height>28</height>
-          </size>
-         </property>
-         <property name="text">
-          <string/>
-         </property>
-         <property name="pixmap">
-          <pixmap resource="res.qrc">logo</pixmap>
-         </property>
-         <property name="scaledContents">
-          <bool>true</bool>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QLabel" name="appTitleLabel">
-         <property name="text">
-          <string>Serial Debug Assistant</string>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QLabel" name="pageTitleLabel">
-         <property name="sizePolicy">
-          <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
-           <horstretch>0</horstretch>
-           <verstretch>0</verstretch>
-          </sizepolicy>
-         </property>
-         <property name="alignment">
-          <set>Qt::AlignRight|Qt::AlignVCenter</set>
-         </property>
-         <property name="text">
-          <string>基础界面</string>
-         </property>
-        </widget>
-       </item>
-      </layout>
-     </widget>
-    </item>
     <item>
      <widget class="QWidget" name="navBarWidget">
       <property name="minimumSize">
@@ -240,168 +159,6 @@
            <property name="bottomMargin">
             <number>16</number>
            </property>
-           <item>
-            <widget class="QWidget" name="statusBarWidget">
-             <property name="sizePolicy">
-              <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-               <horstretch>0</horstretch>
-               <verstretch>0</verstretch>
-              </sizepolicy>
-             </property>
-             <property name="minimumSize">
-              <size>
-               <width>0</width>
-               <height>44</height>
-              </size>
-             </property>
-             <property name="maximumSize">
-              <size>
-               <width>16777215</width>
-               <height>44</height>
-              </size>
-             </property>
-             <layout class="QHBoxLayout" name="statusBarLayout">
-              <property name="spacing">
-               <number>16</number>
-              </property>
-              <property name="leftMargin">
-               <number>12</number>
-              </property>
-              <property name="rightMargin">
-               <number>12</number>
-              </property>
-              <item>
-               <widget class="QWidget" name="connectionStatusWidget">
-                <layout class="QHBoxLayout" name="connectionStatusLayout">
-                 <property name="spacing">
-                  <number>8</number>
-                 </property>
-                 <property name="leftMargin">
-                  <number>0</number>
-                 </property>
-                 <property name="rightMargin">
-                  <number>0</number>
-                 </property>
-                 <item>
-                  <widget class="QLabel" name="statusIndicator">
-                   <property name="minimumSize">
-                    <size>
-                     <width>10</width>
-                     <height>10</height>
-                    </size>
-                   </property>
-                   <property name="maximumSize">
-                    <size>
-                     <width>10</width>
-                     <height>10</height>
-                    </size>
-                   </property>
-                   <property name="text">
-                    <string/>
-                   </property>
-                  </widget>
-                 </item>
-                 <item>
-                  <widget class="QLabel" name="connectionStatusLabel">
-                   <property name="text">
-                    <string>Disconnected</string>
-                   </property>
-                  </widget>
-                 </item>
-                </layout>
-               </widget>
-              </item>
-              <item>
-               <widget class="QFrame" name="statusDivider1">
-                <property name="frameShape">
-                 <enum>QFrame::VLine</enum>
-                </property>
-                <property name="frameShadow">
-                 <enum>QFrame::Plain</enum>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <widget class="QLabel" name="portInfoLabel">
-                <property name="text">
-                 <string>No port selected</string>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <spacer name="statusSpacer">
-                <property name="orientation">
-                 <enum>Qt::Horizontal</enum>
-                </property>
-                <property name="sizeHint" stdset="0">
-                 <size>
-                  <width>40</width>
-                  <height>20</height>
-                 </size>
-                </property>
-               </spacer>
-              </item>
-              <item>
-               <widget class="QLabel" name="rxLabel">
-                <property name="text">
-                 <string>RX</string>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <widget class="QLabel" name="rxCountLabel">
-                <property name="text">
-                 <string>0</string>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <widget class="QLabel" name="txLabel">
-                <property name="margin">
-                 <number>8</number>
-                </property>
-                <property name="text">
-                 <string>TX</string>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <widget class="QLabel" name="txCountLabel">
-                <property name="text">
-                 <string>0</string>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <widget class="QFrame" name="statusDivider2">
-                <property name="frameShape">
-                 <enum>QFrame::VLine</enum>
-                </property>
-                <property name="frameShadow">
-                 <enum>QFrame::Plain</enum>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <widget class="QLabel" name="rxRateLabel">
-                <property name="text">
-                 <string>RX Rate</string>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <widget class="QLabel" name="rxRateValueLabel">
-                <property name="text">
-                 <string>0 B/s</string>
-                </property>
-                <property name="styleSheet">
-                 <string notr="true">font-weight: 600; color: #c0caf5; font-family: Consolas, "Courier New", monospace;</string>
-                </property>
-               </widget>
-              </item>
-             </layout>
-            </widget>
-           </item>
            <item>
             <widget class="QWidget" name="baseContentWidget">
              <layout class="QHBoxLayout" name="baseContentLayout">
@@ -591,157 +348,7 @@
                    </property>
                   </widget>
                  </item>
-                 <item>
-                  <widget class="QWidget" name="dataBitsWidget">
-                   <layout class="QHBoxLayout" name="dataBitsLayout">
-                    <property name="spacing">
-                     <number>4</number>
-                    </property>
-                    <property name="leftMargin">
-                     <number>0</number>
-                    </property>
-                    <property name="topMargin">
-                     <number>0</number>
-                    </property>
-                    <property name="rightMargin">
-                     <number>0</number>
-                    </property>
-                    <property name="bottomMargin">
-                     <number>0</number>
-                    </property>
-                    <item>
-                     <widget class="QComboBox" name="dataBitsComboLeft">
-                      <property name="sizePolicy">
-                       <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-                        <horstretch>0</horstretch>
-                        <verstretch>0</verstretch>
-                       </sizepolicy>
-                      </property>
-                      <property name="minimumSize">
-                       <size>
-                        <width>56</width>
-                        <height>30</height>
-                       </size>
-                      </property>
-                      <property name="maximumSize">
-                       <size>
-                        <width>56</width>
-                        <height>30</height>
-                       </size>
-                      </property>
-                      <item>
-                       <property name="text">
-                        <string>8</string>
-                       </property>
-                      </item>
-                      <item>
-                       <property name="text">
-                        <string>7</string>
-                       </property>
-                      </item>
-                      <item>
-                       <property name="text">
-                        <string>6</string>
-                       </property>
-                      </item>
-                      <item>
-                       <property name="text">
-                        <string>5</string>
-                       </property>
-                      </item>
-                     </widget>
-                    </item>
-                    <item>
-                     <widget class="QComboBox" name="parityComboLeft">
-                      <property name="sizePolicy">
-                       <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-                        <horstretch>0</horstretch>
-                        <verstretch>0</verstretch>
-                       </sizepolicy>
-                      </property>
-                      <property name="minimumSize">
-                       <size>
-                        <width>64</width>
-                        <height>30</height>
-                       </size>
-                      </property>
-                      <property name="maximumSize">
-                       <size>
-                        <width>64</width>
-                        <height>30</height>
-                       </size>
-                      </property>
-                      <item>
-                       <property name="text">
-                        <string>N</string>
-                       </property>
-                      </item>
-                      <item>
-                       <property name="text">
-                        <string>E</string>
-                       </property>
-                      </item>
-                      <item>
-                       <property name="text">
-                        <string>O</string>
-                       </property>
-                      </item>
-                     </widget>
-                    </item>
-                    <item>
-                     <widget class="QComboBox" name="stopBitsComboLeft">
-                      <property name="sizePolicy">
-                       <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-                        <horstretch>0</horstretch>
-                        <verstretch>0</verstretch>
-                       </sizepolicy>
-                      </property>
-                      <property name="minimumSize">
-                       <size>
-                        <width>48</width>
-                        <height>30</height>
-                       </size>
-                      </property>
-                      <property name="maximumSize">
-                       <size>
-                        <width>48</width>
-                        <height>30</height>
-                       </size>
-                      </property>
-                      <item>
-                       <property name="text">
-                        <string>1</string>
-                       </property>
-                      </item>
-                      <item>
-                       <property name="text">
-                        <string>1.5</string>
-                       </property>
-                      </item>
-                      <item>
-                       <property name="text">
-                        <string>2</string>
-                       </property>
-                      </item>
-                     </widget>
-                    </item>
-                    <item>
-                     <spacer name="dataBitsSpacer">
-                      <property name="orientation">
-                       <enum>Qt::Horizontal</enum>
-                      </property>
-                      <property name="sizeHint" stdset="0">
-                       <size>
-                        <width>40</width>
-                        <height>20</height>
-                       </size>
-                      </property>
-                     </spacer>
-                    </item>
-                   </layout>
-                  </widget>
-                 </item>
-                 <item>
+                 <item><widget class="QLineEdit" name="dataBitsField"><property name="sizePolicy"><sizepolicy hsizetype="Expanding" vsizetype="Fixed"><horstretch>0</horstretch><verstretch>0</verstretch></sizepolicy></property><property name="minimumSize"><size><width>64</width><height>34</height></size></property><property name="text"><string>8 N 1</string></property><property name="toolTip"><string>数据位 校验 停止位，如 8 N 1</string></property></widget></item><item>
                   <widget class="QPushButton" name="openPortButton">
                    <property name="sizePolicy">
                     <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
@@ -809,37 +416,6 @@
                   </widget>
                  </item>
                  <item>
-                  <widget class="QLabel" name="displayOptionsLabel">
-                   <property name="text">
-                    <string>Display Options</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item>
-                  <widget class="QCheckBox" name="hexRecvCheckBox">
-                   <property name="text">
-                    <string>Hex Display</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item>
-                  <widget class="QCheckBox" name="timestampCheckBox">
-                   <property name="text">
-                    <string>Show Timestamp</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item>
-                  <widget class="QCheckBox" name="autoScrollCheckBox">
-                   <property name="checked">
-                    <bool>true</bool>
-                   </property>
-                   <property name="text">
-                    <string>Auto Scroll</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item>
                   <spacer name="portConfigSpacer">
                    <property name="orientation">
                     <enum>Qt::Vertical</enum>
@@ -877,7 +453,199 @@
               <item>
                <widget class="QWidget" name="textPanelWidget">
                 <layout class="QVBoxLayout" name="textPanelLayout">
+                 <item><widget class="QWidget" name="statusBarWidget">
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
+             <property name="minimumSize">
+              <size>
+               <width>0</width>
+               <height>44</height>
+              </size>
+             </property>
+             <property name="maximumSize">
+              <size>
+               <width>16777215</width>
+               <height>44</height>
+              </size>
+             </property>
+             <layout class="QHBoxLayout" name="statusBarLayout">
+              <property name="spacing">
+               <number>16</number>
+              </property>
+              <property name="leftMargin">
+               <number>12</number>
+              </property>
+              <property name="rightMargin">
+               <number>12</number>
+              </property>
+              <item>
+               <widget class="QWidget" name="connectionStatusWidget">
+                <layout class="QHBoxLayout" name="connectionStatusLayout">
                  <property name="spacing">
+                  <number>8</number>
+                 </property>
+                 <property name="leftMargin">
+                  <number>0</number>
+                 </property>
+                 <property name="rightMargin">
+                  <number>0</number>
+                 </property>
+                 <item>
+                  <widget class="QLabel" name="statusIndicator">
+                   <property name="minimumSize">
+                    <size>
+                     <width>10</width>
+                     <height>10</height>
+                    </size>
+                   </property>
+                   <property name="maximumSize">
+                    <size>
+                     <width>10</width>
+                     <height>10</height>
+                    </size>
+                   </property>
+                   <property name="text">
+                    <string/>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QLabel" name="connectionStatusLabel">
+                   <property name="text">
+                    <string>Disconnected</string>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </widget>
+              </item>
+              <item>
+               <widget class="QFrame" name="statusDivider1">
+                <property name="frameShape">
+                 <enum>QFrame::VLine</enum>
+                </property>
+                <property name="frameShadow">
+                 <enum>QFrame::Plain</enum>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QLabel" name="portInfoLabel">
+                <property name="text">
+                 <string>No port selected</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+                  <widget class="QLabel" name="displayOptionsLabel">
+                   <property name="text">
+                    <string>Display Options</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QCheckBox" name="hexRecvCheckBox">
+                   <property name="text">
+                    <string>Hex Display</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QCheckBox" name="timestampCheckBox">
+                   <property name="text">
+                    <string>Show Timestamp</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QCheckBox" name="autoScrollCheckBox">
+                   <property name="checked">
+                    <bool>true</bool>
+                   </property>
+                   <property name="text">
+                    <string>Auto Scroll</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+               <spacer name="statusSpacer">
+                <property name="orientation">
+                 <enum>Qt::Horizontal</enum>
+                </property>
+                <property name="sizeHint" stdset="0">
+                 <size>
+                  <width>40</width>
+                  <height>20</height>
+                 </size>
+                </property>
+               </spacer>
+              </item>
+              <item>
+               <widget class="QLabel" name="rxLabel">
+                <property name="text">
+                 <string>RX</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QLabel" name="rxCountLabel">
+                <property name="text">
+                 <string>0</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QLabel" name="txLabel">
+                <property name="margin">
+                 <number>8</number>
+                </property>
+                <property name="text">
+                 <string>TX</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QLabel" name="txCountLabel">
+                <property name="text">
+                 <string>0</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QFrame" name="statusDivider2">
+                <property name="frameShape">
+                 <enum>QFrame::VLine</enum>
+                </property>
+                <property name="frameShadow">
+                 <enum>QFrame::Plain</enum>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QLabel" name="rxRateLabel">
+                <property name="text">
+                 <string>RX Rate</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QLabel" name="rxRateValueLabel">
+                <property name="text">
+                 <string>0 B/s</string>
+                </property>
+                <property name="styleSheet">
+                 <string notr="true">font-weight: 600; color: #c0caf5; font-family: Consolas, "Courier New", monospace;</string>
+                </property>
+               </widget>
+              </item>
+             </layout>
+            </widget>
+             </item>
+             <property name="spacing">
                   <number>8</number>
                  </property>
                  <property name="leftMargin">
@@ -2019,13 +1787,112 @@
                      </property>
                      <layout class="QFormLayout" name="serialLayout">
                       <item row="0" column="0">
+                       <widget class="QLabel" name="advPortLabel">
+                        <property name="text">
+                         <string>串口</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="0" column="1">
+                       <widget class="QComboBox" name="advPortCombo">
+                        <property name="sizePolicy">
+                         <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+                          <horstretch>0</horstretch>
+                          <verstretch>0</verstretch>
+                         </sizepolicy>
+                        </property>
+                        <property name="minimumSize">
+                         <size>
+                          <width>0</width>
+                          <height>34</height>
+                         </size>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="1" column="0">
+                       <widget class="QLabel" name="advBaudLabel">
+                        <property name="text">
+                         <string>波特率</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="1" column="1">
+                       <widget class="QComboBox" name="advBaudCombo">
+                        <property name="sizePolicy">
+                         <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+                          <horstretch>0</horstretch>
+                          <verstretch>0</verstretch>
+                         </sizepolicy>
+                        </property>
+                        <property name="minimumSize">
+                         <size>
+                          <width>0</width>
+                          <height>34</height>
+                         </size>
+                        </property>
+                        <property name="editable">
+                         <bool>true</bool>
+                        </property>
+                        <item>
+                         <property name="text">
+                          <string>4800</string>
+                         </property>
+                        </item>
+                        <item>
+                         <property name="text">
+                          <string>9600</string>
+                         </property>
+                        </item>
+                        <item>
+                         <property name="text">
+                          <string>19200</string>
+                         </property>
+                        </item>
+                        <item>
+                         <property name="text">
+                          <string>38400</string>
+                         </property>
+                        </item>
+                        <item>
+                         <property name="text">
+                          <string>57600</string>
+                         </property>
+                        </item>
+                        <item>
+                         <property name="text">
+                          <string>115200</string>
+                         </property>
+                        </item>
+                        <item>
+                         <property name="text">
+                          <string>128000</string>
+                         </property>
+                        </item>
+                        <item>
+                         <property name="text">
+                          <string>256000</string>
+                         </property>
+                        </item>
+                        <item>
+                         <property name="text">
+                          <string>921600</string>
+                         </property>
+                        </item>
+                        <item>
+                         <property name="text">
+                          <string>1500000</string>
+                         </property>
+                        </item>
+                       </widget>
+                      </item>
+                      <item row="2" column="0">
                        <widget class="QLabel" name="dataBitsLabelAdv">
                         <property name="text">
                          <string>数据位</string>
                         </property>
                        </widget>
                       </item>
-                      <item row="0" column="1">
+                      <item row="2" column="1">
                        <widget class="QComboBox" name="dataBitsCombo">
                         <item>
                          <property name="text">
@@ -2049,14 +1916,14 @@
                         </item>
                        </widget>
                       </item>
-                      <item row="1" column="0">
+                      <item row="3" column="0">
                        <widget class="QLabel" name="stopBitsLabel">
                         <property name="text">
                          <string>停止位</string>
                         </property>
                        </widget>
                       </item>
-                      <item row="1" column="1">
+                      <item row="3" column="1">
                        <widget class="QComboBox" name="stopBitsCombo">
                         <item>
                          <property name="text">
@@ -2075,14 +1942,14 @@
                         </item>
                        </widget>
                       </item>
-                      <item row="2" column="0">
+                      <item row="4" column="0">
                        <widget class="QLabel" name="parityLabel">
                         <property name="text">
                          <string>校验位</string>
                         </property>
                        </widget>
                       </item>
-                      <item row="2" column="1">
+                      <item row="4" column="1">
                        <widget class="QComboBox" name="parityCombo">
                         <item>
                          <property name="text">
@@ -2111,14 +1978,14 @@
                         </item>
                        </widget>
                       </item>
-                      <item row="3" column="0">
+                      <item row="5" column="0">
                        <widget class="QLabel" name="flowCtrlLabel">
                         <property name="text">
                          <string>流控</string>
                         </property>
                        </widget>
                       </item>
-                      <item row="3" column="1">
+                      <item row="5" column="1">
                        <widget class="QComboBox" name="flowCtrlCombo">
                         <item>
                          <property name="text">
@@ -2171,6 +2038,93 @@
                      </item>
                     </layout>
       </item>
+      <item>
+        <widget class="QGroupBox" name="highSpeedGroupBox">
+                     <property name="title">
+                      <string>高速串口设置</string>
+                     </property>
+                     <layout class="QFormLayout" name="highSpeedLayout">
+                      <item row="0" column="0">
+                       <widget class="QLabel" name="throughputCapCaption">
+                        <property name="text">
+                         <string>当前进程最大数据消化能力</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="0" column="1">
+                       <widget class="QLabel" name="throughputCapLabel">
+                        <property name="text">
+                         <string>约 230 MB/s</string>
+                        </property>
+                        <property name="styleSheet">
+                         <string notr="true">font-weight:600; color:#2ea043;</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="1" column="0">
+                       <widget class="QLabel" name="bufferStrategyCaption">
+                        <property name="text">
+                         <string>缓冲区策略</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="1" column="1">
+                       <widget class="QComboBox" name="bufferStrategyCombo">
+                        <property name="sizePolicy">
+                         <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+                          <horstretch>0</horstretch>
+                          <verstretch>0</verstretch>
+                         </sizepolicy>
+                        </property>
+                        <property name="minimumSize">
+                         <size>
+                          <width>0</width>
+                          <height>34</height>
+                         </size>
+                        </property>
+                        <item>
+                         <property name="text">
+                          <string>环形缓冲 (RingBuffer)</string>
+                         </property>
+                        </item>
+                        <item>
+                         <property name="text">
+                          <string>双缓冲 (DoubleBuffer)</string>
+                         </property>
+                        </item>
+                        <item>
+                         <property name="text">
+                          <string>追加缓冲 (AppendBuffer)</string>
+                         </property>
+                        </item>
+                       </widget>
+                      </item>
+                      <item row="2" column="0" colspan="2">
+                       <widget class="QLabel" name="bufferStrategyHint">
+                        <property name="text">
+                         <string>环形缓冲：固定容量、内存恒定，满则丢弃最旧数据，适合持续高速数据流（如波形采样、持续监控）。</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="3" column="0" colspan="2">
+                       <widget class="QLabel" name="bufferStrategyLockNote">
+                        <property name="text">
+                         <string>提示：缓冲区策略在串口打开前生效，串口打开过程中不支持动态切换。</string>
+                        </property>
+                        <property name="styleSheet">
+                         <string notr="true">color:#d29a3a;</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                       </widget>
+                      </item>
+                     </layout>
+                    </widget>
+      </item>
       <item><spacer name="pageSettingsSpacer2"><property name="orientation"><enum>Qt::Vertical</enum></property><property name="sizeHint" stdset="0"><size><width>20</width><height>40</height></size></property></spacer></item>
      </layout>
     </widget>
@@ -2179,7 +2133,8 @@
       <property name="spacing"><number>10</number></property>
       <property name="leftMargin"><number>4</number></property>
       <property name="rightMargin"><number>4</number></property>
-      <item><widget class="QLabel" name="pluginPlaceholderLabel"><property name="text"><string>插件系统规划中&#10;扩展方向：协议解析 / 数据可视化 / 导出</string></property><property name="alignment"><set>Qt::AlignCenter</set></property></widget></item>
+      <item><widget class="QLabel" name="pluginPlaceholderLabel"><property name="text"><string>插件系统规划中
+扩展方向：协议解析 / 数据可视化 / 导出</string></property><property name="alignment"><set>Qt::AlignCenter</set></property></widget></item>
       <item><spacer name="pageSettingsSpacer3"><property name="orientation"><enum>Qt::Vertical</enum></property><property name="sizeHint" stdset="0"><size><width>20</width><height>40</height></size></property></spacer></item>
      </layout>
     </widget>

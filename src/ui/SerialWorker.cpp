@@ -4,6 +4,8 @@
 #include "core/PortConfig.hpp"
 #include "core/Frame.hpp"
 #include "core/buffer/RingBuffer.hpp"
+#include "core/buffer/DoubleBuffer.hpp"
+#include "core/buffer/AppendBuffer.hpp"
 #include "io/SerialSource.hpp"
 #include "service/EventBus.hpp"
 #include "service/FieldPool.hpp"
@@ -100,6 +102,22 @@ QString SerialWorker::lastError() const {
 
 sd::PortConfig& SerialWorker::config() { return *config_; }
 const sd::PortConfig& SerialWorker::config() const { return *config_; }
+
+void SerialWorker::setBufferStrategy(int strategy) {
+    if (open_) return; // 打开中不支持动态切换
+    const int s = (strategy < 0 || strategy > 2) ? 0 : strategy;
+    if (s == bufferStrategy_) return;
+    sd::IBufferStrategy* nb = nullptr;
+    switch (s) {
+        case 1: nb = new sd::DoubleBuffer(); break;   // 2MB 双缓冲
+        case 2: nb = new sd::AppendBuffer(); break;   // 4MB 追加缓冲
+        default: nb = new sd::RingBuffer(1 << 20);    // 1MB 环形缓冲
+    }
+    bufferStrategy_ = s;
+    delete buffer_;
+    buffer_ = nb;
+    session_->setBuffer(buffer_);
+}
 
 void SerialWorker::poll() {
     if (!open_) return;
