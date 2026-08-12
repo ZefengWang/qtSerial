@@ -84,7 +84,8 @@ ColumnLayout {
                     readOnly: true
                     font.family: "monospace"
                     color: "#c0caf5"
-                    textDocument.selectionColor: "#7aa2f7"
+                    selectionColor: "#7aa2f7"
+                    selectedTextColor: "#0d0d14"
                     wrapMode: TextEdit.Wrap
                 }
             }

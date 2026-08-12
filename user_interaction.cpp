@@ -880,10 +880,6 @@ void serial::on_advancedSettingsBtn_clicked() {
   ui->settingsNavList->setCurrentRow(1);  // 高级串口设置 tab（触发 settingsStack 切换到 pageSerial）
 }
 
-void serial::on_portComboBox_activated(const QString &arg1) {
-  worker_->config().name = arg1.toStdString();
-}
-
 void serial::on_saveLogButton_clicked() {
   if (ui->recvBrowser->toPlainText().isEmpty()) {
     appendReceiveData(tr("[System] No data to save"));

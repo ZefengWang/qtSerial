@@ -93,6 +93,25 @@ if(Qt6_FOUND)
     set_tests_properties(port_monitor_test PROPERTIES
         ENVIRONMENT "QT_QPA_PLATFORM=offscreen"
     )
+
+    # 临时：QML 全页面自动化验证（加载真实 Main.qml，驱动切换 5 页）
+    find_package(Qt6 COMPONENTS Quick Qml QuickControls2)
+    if(Qt6_FOUND)
+        add_executable(qml_page_test qml_page_test.cpp
+            ${CMAKE_SOURCE_DIR}/src/ui/SerialWorker.cpp
+            ${CMAKE_SOURCE_DIR}/src/qml/qml_resources.qrc
+        )
+        target_include_directories(qml_page_test PRIVATE ${CMAKE_SOURCE_DIR}/src)
+        target_link_libraries(qml_page_test PRIVATE
+            Qt6::Gui Qt6::Quick Qt6::Qml Qt6::QuickControls2
+            sd_core sd_service sd_io sd_ui sd_launcher
+        )
+        target_compile_features(qml_page_test PRIVATE cxx_std_17)
+        add_test(NAME qml_page_test COMMAND qml_page_test)
+        set_tests_properties(qml_page_test PROPERTIES
+            ENVIRONMENT "QT_QPA_PLATFORM=offscreen"
+        )
+    endif()
 endif()
 
 # ---------- 覆盖率（可选，需 gcov） ----------

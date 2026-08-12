@@ -46,7 +46,6 @@ private slots:
   void on_clearTextButton_clicked();
   void on_clearRecvButton_clicked();
   void on_advancedSettingsBtn_clicked();
-  void on_portComboBox_activated(const QString &arg1);
   void on_timerCheckBox_stateChanged(int state);
   void on_saveLogButton_clicked();
   void timerSendData();
