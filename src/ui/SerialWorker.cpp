@@ -78,6 +78,7 @@ bool SerialWorker::open(const sd::PortConfig& cfg) {
     open_ = true;
     pollTimer_.start();
     emit connectionChanged(true);
+    emit configApplied(cfg); // service 已成功应用配置，通知 UI 刷新
     return true;
 }
 

@@ -100,9 +100,6 @@ private:
   void syncSerialSettingsLeftToSettingsPage();
   void syncSerialSettingsSettingsPageToLeft();
 
-  // 基础页"8 N 1"合并输入框：解析并写回 config
-  void applyDataBitsFieldToConfig();
-
   // 更新高速串口设置区（最大数据消化能力 + 缓冲区策略说明）
   void updateHighSpeedInfo(int strategyIdx);
 

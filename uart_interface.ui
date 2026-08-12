@@ -113,7 +113,65 @@
          </item>
         </widget>
        </item>
-      </layout>
+      <item>
+               <widget class="QWidget" name="connectionStatusWidget">
+                <layout class="QHBoxLayout" name="connectionStatusLayout">
+                 <property name="spacing">
+                  <number>8</number>
+                 </property>
+                 <property name="leftMargin">
+                  <number>0</number>
+                 </property>
+                 <property name="rightMargin">
+                  <number>0</number>
+                 </property>
+                 <item>
+                  <widget class="QLabel" name="statusIndicator">
+                   <property name="minimumSize">
+                    <size>
+                     <width>10</width>
+                     <height>10</height>
+                    </size>
+                   </property>
+                   <property name="maximumSize">
+                    <size>
+                     <width>10</width>
+                     <height>10</height>
+                    </size>
+                   </property>
+                   <property name="text">
+                    <string/>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QLabel" name="connectionStatusLabel">
+                   <property name="text">
+                    <string>Disconnected</string>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </widget>
+              </item>
+              <item>
+               <widget class="QFrame" name="statusDivider1">
+                <property name="frameShape">
+                 <enum>QFrame::VLine</enum>
+                </property>
+                <property name="frameShadow">
+                 <enum>QFrame::Plain</enum>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QLabel" name="portInfoLabel">
+                <property name="text">
+                 <string>No port selected</string>
+                </property>
+               </widget>
+              </item>
+              </layout>
      </widget>
     </item>
     <item>
@@ -348,7 +406,7 @@
                    </property>
                   </widget>
                  </item>
-                 <item><widget class="QLineEdit" name="dataBitsField"><property name="sizePolicy"><sizepolicy hsizetype="Expanding" vsizetype="Fixed"><horstretch>0</horstretch><verstretch>0</verstretch></sizepolicy></property><property name="minimumSize"><size><width>64</width><height>34</height></size></property><property name="text"><string>8 N 1</string></property><property name="toolTip"><string>数据位 校验 停止位，如 8 N 1</string></property></widget></item><item>
+                 <item><widget class="QLineEdit" name="dataBitsField"><property name="sizePolicy"><sizepolicy hsizetype="Expanding" vsizetype="Fixed"><horstretch>0</horstretch><verstretch>0</verstretch></sizepolicy></property><property name="minimumSize"><size><width>64</width><height>34</height></size></property><property name="text"><string>8 N 1</string></property><property name="readOnly"><bool>true</bool></property><property name="toolTip"><string>数据位 校验 停止位（只读），请在「设置 → 高级串口设置」中修改</string></property></widget></item><item>
                   <widget class="QPushButton" name="openPortButton">
                    <property name="sizePolicy">
                     <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
@@ -473,7 +531,65 @@
               </size>
              </property>
              <layout class="QHBoxLayout" name="statusBarLayout">
-              <property name="spacing">
+              <item>
+                     <widget class="QLabel" name="receiveTitleLabel">
+                      <property name="text">
+                       <string>Receive Data</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item>
+                     <spacer name="receiveHeaderSpacer">
+                      <property name="orientation">
+                       <enum>Qt::Horizontal</enum>
+                      </property>
+                      <property name="sizeHint" stdset="0">
+                       <size>
+                        <width>40</width>
+                        <height>20</height>
+                       </size>
+                      </property>
+                     </spacer>
+                    </item>
+                    <item>
+                     <widget class="QPushButton" name="saveLogButton">
+                      <property name="sizePolicy">
+                       <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+                        <horstretch>0</horstretch>
+                        <verstretch>0</verstretch>
+                       </sizepolicy>
+                      </property>
+                      <property name="minimumSize">
+                       <size>
+                        <width>84</width>
+                        <height>28</height>
+                       </size>
+                      </property>
+                      <property name="text">
+                       <string>Save Log</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item>
+                     <widget class="QPushButton" name="clearRecvButton">
+                      <property name="sizePolicy">
+                       <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+                        <horstretch>0</horstretch>
+                        <verstretch>0</verstretch>
+                       </sizepolicy>
+                      </property>
+                      <property name="minimumSize">
+                       <size>
+                        <width>84</width>
+                        <height>28</height>
+                       </size>
+                      </property>
+                      <property name="text">
+                       <string>Clear</string>
+                      </property>
+                     </widget>
+                    </item>
+                   <property name="spacing">
                <number>16</number>
               </property>
               <property name="leftMargin">
@@ -482,64 +598,6 @@
               <property name="rightMargin">
                <number>12</number>
               </property>
-              <item>
-               <widget class="QWidget" name="connectionStatusWidget">
-                <layout class="QHBoxLayout" name="connectionStatusLayout">
-                 <property name="spacing">
-                  <number>8</number>
-                 </property>
-                 <property name="leftMargin">
-                  <number>0</number>
-                 </property>
-                 <property name="rightMargin">
-                  <number>0</number>
-                 </property>
-                 <item>
-                  <widget class="QLabel" name="statusIndicator">
-                   <property name="minimumSize">
-                    <size>
-                     <width>10</width>
-                     <height>10</height>
-                    </size>
-                   </property>
-                   <property name="maximumSize">
-                    <size>
-                     <width>10</width>
-                     <height>10</height>
-                    </size>
-                   </property>
-                   <property name="text">
-                    <string/>
-                   </property>
-                  </widget>
-                 </item>
-                 <item>
-                  <widget class="QLabel" name="connectionStatusLabel">
-                   <property name="text">
-                    <string>Disconnected</string>
-                   </property>
-                  </widget>
-                 </item>
-                </layout>
-               </widget>
-              </item>
-              <item>
-               <widget class="QFrame" name="statusDivider1">
-                <property name="frameShape">
-                 <enum>QFrame::VLine</enum>
-                </property>
-                <property name="frameShadow">
-                 <enum>QFrame::Plain</enum>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <widget class="QLabel" name="portInfoLabel">
-                <property name="text">
-                 <string>No port selected</string>
-                </property>
-               </widget>
-              </item>
               <item>
                   <widget class="QLabel" name="displayOptionsLabel">
                    <property name="text">
@@ -654,97 +712,6 @@
                  <property name="rightMargin">
                   <number>0</number>
                  </property>
-                 <item>
-                  <widget class="QWidget" name="receiveHeaderWidget">
-                   <property name="sizePolicy">
-                    <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-                     <horstretch>0</horstretch>
-                     <verstretch>0</verstretch>
-                    </sizepolicy>
-                   </property>
-                   <property name="minimumSize">
-                    <size>
-                     <width>0</width>
-                     <height>34</height>
-                    </size>
-                   </property>
-                   <property name="maximumSize">
-                    <size>
-                     <width>16777215</width>
-                     <height>34</height>
-                    </size>
-                   </property>
-                   <layout class="QHBoxLayout" name="receiveHeaderLayout">
-                    <property name="spacing">
-                     <number>8</number>
-                    </property>
-                    <property name="leftMargin">
-                     <number>12</number>
-                    </property>
-                    <property name="rightMargin">
-                     <number>12</number>
-                    </property>
-                    <item>
-                     <widget class="QLabel" name="receiveTitleLabel">
-                      <property name="text">
-                       <string>Receive Data</string>
-                      </property>
-                     </widget>
-                    </item>
-                    <item>
-                     <spacer name="receiveHeaderSpacer">
-                      <property name="orientation">
-                       <enum>Qt::Horizontal</enum>
-                      </property>
-                      <property name="sizeHint" stdset="0">
-                       <size>
-                        <width>40</width>
-                        <height>20</height>
-                       </size>
-                      </property>
-                     </spacer>
-                    </item>
-                    <item>
-                     <widget class="QPushButton" name="saveLogButton">
-                      <property name="sizePolicy">
-                       <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
-                        <horstretch>0</horstretch>
-                        <verstretch>0</verstretch>
-                       </sizepolicy>
-                      </property>
-                      <property name="minimumSize">
-                       <size>
-                        <width>84</width>
-                        <height>28</height>
-                       </size>
-                      </property>
-                      <property name="text">
-                       <string>Save Log</string>
-                      </property>
-                     </widget>
-                    </item>
-                    <item>
-                     <widget class="QPushButton" name="clearRecvButton">
-                      <property name="sizePolicy">
-                       <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
-                        <horstretch>0</horstretch>
-                        <verstretch>0</verstretch>
-                       </sizepolicy>
-                      </property>
-                      <property name="minimumSize">
-                       <size>
-                        <width>84</width>
-                        <height>28</height>
-                       </size>
-                      </property>
-                      <property name="text">
-                       <string>Clear</string>
-                      </property>
-                     </widget>
-                    </item>
-                   </layout>
-                  </widget>
-                 </item>
                  <item>
                   <widget class="QTextBrowser" name="recvBrowser">
                    <property name="sizePolicy">

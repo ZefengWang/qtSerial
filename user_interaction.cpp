@@ -272,6 +272,13 @@ serial::serial(QWidget *parent) :
     }
   });
 
+  // 串口配置已被 service 成功应用：刷新基础页与设置页的参数显示（UI ⇄ service 闭环）
+  connect(worker_, &SerialWorker::configApplied, this, [this](const sd::PortConfig &cfg) {
+    Q_UNUSED(cfg);
+    syncSerialSettingsSettingsPageToLeft();   // config -> 基础页 "8 N 1"
+    syncSerialSettingsLeftToSettingsPage();   // config -> 设置页内联控件
+  });
+
   // 初始化连接状态显示
   updateConnectionStatus(false);
 
@@ -369,11 +376,6 @@ void serial::setupConnections() {
   // 基础页：刷新端口按钮（左侧大按钮，与右侧小刷新按钮同效）
   connect(ui->refreshPortBtn, &QPushButton::clicked,
           this, &serial::on_refreshButton_clicked);
-
-  // 基础页：左侧数据位/校验/停止 合并单输入框("8 N 1")，编辑即写回 config
-  connect(ui->dataBitsField, &QLineEdit::editingFinished, this, [this](){
-      applyDataBitsFieldToConfig();
-  });
 
   // 波特率变更同步到 config（打开串口时读取），基础页/高级设置页均支持自定义
   auto applyBaud = [this](QComboBox *cb){
@@ -514,6 +516,9 @@ void serial::updateConnectionStatus(bool connected) {
     ui->parityCombo->setEnabled(false);
     ui->flowCtrlCombo->setEnabled(false);
     ui->bufferStrategyCombo->setEnabled(false);
+    ui->applyInlineSettingsBtn->setEnabled(false);
+    ui->resetInlineSettingsBtn->setEnabled(false);
+    ui->highSpeedGroupBox->setEnabled(false);
 
     ui->openPortButton->setText(tr("Close Port"));
 
@@ -545,6 +550,9 @@ void serial::updateConnectionStatus(bool connected) {
     ui->parityCombo->setEnabled(true);
     ui->flowCtrlCombo->setEnabled(true);
     ui->bufferStrategyCombo->setEnabled(true);
+    ui->applyInlineSettingsBtn->setEnabled(true);
+    ui->resetInlineSettingsBtn->setEnabled(true);
+    ui->highSpeedGroupBox->setEnabled(true);
 
     ui->openPortButton->setText(tr("Open Port"));
 
@@ -1353,13 +1361,20 @@ void serial::on_resetInlineSettingsBtn_clicked() {
 }
 
 void serial::syncSerialSettingsLeftToSettingsPage() {
-  // 左侧 -> 设置页内联
+  // config -> 设置页内联控件（数据位/停止位/校验/流控/波特率）
   const sd::PortConfig &cfg = worker_->config();
   int di = ui->dataBitsCombo->findText(QString::number(cfg.dataBits));
   if (di >= 0) ui->dataBitsCombo->setCurrentIndex(di);
   ui->parityCombo->setCurrentIndex(cfg.parity);
   int si = ui->stopBitsCombo->findText(QString::number(cfg.stopBits));
   if (si >= 0) ui->stopBitsCombo->setCurrentIndex(si);
+  ui->flowCtrlCombo->setCurrentIndex(cfg.flowControl);
+  {
+    QSignalBlocker b1(ui->advBaudCombo);
+    ui->advBaudCombo->setCurrentText(QString::number(cfg.baudRate));
+    QSignalBlocker b2(ui->baudComboBox);
+    ui->baudComboBox->setCurrentText(QString::number(cfg.baudRate));
+  }
 }
 
 void serial::syncSerialSettingsSettingsPageToLeft() {
@@ -1370,35 +1385,6 @@ void serial::syncSerialSettingsSettingsPageToLeft() {
       .arg(QString::number(cfg.dataBits))
       .arg(parityShortName(cfg.parity))
       .arg(QString::number(cfg.stopBits, 'g', 2)));
-}
-
-void serial::applyDataBitsFieldToConfig() {
-  // 解析 "8 N 1" -> dataBits/parity/stopBits，写回 config
-  const QString txt = ui->dataBitsField->text().trimmed();
-  const QStringList parts = txt.split(QLatin1Char(' '), Qt::SkipEmptyParts);
-  if (parts.size() < 3) return;
-  bool ok = false;
-  const int db = parts[0].toInt(&ok);
-  if (!ok || db < 5 || db > 8) return;
-  const QString p = parts[1].toUpper();
-  int parity = 0;
-  if (p == QLatin1String("E"))      parity = 1;
-  else if (p == QLatin1String("O")) parity = 2;
-  else if (p == QLatin1String("S")) parity = 3;
-  else if (p == QLatin1String("M")) parity = 4;
-  double sb = parts[2].toDouble(&ok);
-  if (!ok) return;
-  if (sb != 1.0 && sb != 1.5 && sb != 2.0) return;
-
-  sd::PortConfig &cfg = worker_->config();
-  cfg.dataBits = db;
-  cfg.parity   = parity;
-  cfg.stopBits = (int)sb;
-
-  // 回写规范化文本
-  QSignalBlocker bf(ui->dataBitsField);
-  ui->dataBitsField->setText(QString("%1 %2 %3")
-      .arg(db).arg(parityShortName(parity)).arg(QString::number(sb, 'g', 2)));
 }
 
 void serial::updateHighSpeedInfo(int strategyIdx) {

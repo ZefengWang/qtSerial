@@ -83,6 +83,8 @@ signals:
     void dataReceived(const QByteArray& data);
     // 连接状态变化（false=关闭，true=打开）。
     void connectionChanged(bool open);
+    // 串口配置已被 service 成功应用（open 成功后发出），UI 应据此刷新参数显示。
+    void configApplied(const sd::PortConfig& cfg);
     // 协议解析出一帧（帧数据到达字段池后发出，供可视化视图刷新）。
     void frameReceived(const sd::Frame& frame);
 
