@@ -124,7 +124,7 @@ ColumnLayout {
         CheckBox {
             id: hexCheck
             text: "HEX"
-            textColor: "#c0caf5"
+            palette.windowText: "#c0caf5"
         }
         Button {
             id: sendBtn

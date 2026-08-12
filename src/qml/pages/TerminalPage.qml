@@ -36,7 +36,7 @@ ColumnLayout {
             CheckBox {
                 id: echoCheck
                 text: "本地回显"
-                textColor: "#c0caf5"
+                palette.windowText: "#c0caf5"
                 checked: true
             }
         }
