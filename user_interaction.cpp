@@ -14,37 +14,11 @@
 #include <QSettings>
 #include <QEvent>
 #include <QApplication>
-#include <QScrollArea>
-#include <QHBoxLayout>
 
 serial::serial(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::serial){
   ui->setupUi(this);
-
-  // Wrap sidebar in scroll area to prevent content truncation
-  QScrollArea *sidebarScroll = new QScrollArea(this);
-  sidebarScroll->setWidget(ui->sidebarWidget);
-  sidebarScroll->setWidgetResizable(true);
-  sidebarScroll->setFrameShape(QFrame::NoFrame);
-  sidebarScroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-  // Replace the sidebar widget in the main layout
-  QLayout *mainLayout = ui->centralWidget->layout();
-  if (mainLayout) {
-      QLayoutItem *sidebarItem = nullptr;
-      for (int i = 0; i < mainLayout->count(); ++i) {
-          if (mainLayout->itemAt(i)->widget() == ui->sidebarWidget) {
-              sidebarItem = mainLayout->itemAt(i);
-              break;
-          }
-      }
-      if (sidebarItem) {
-          mainLayout->removeWidget(ui->sidebarWidget);
-          sidebarScroll->setWidget(ui->sidebarWidget);
-          // Insert scroll area at the same position
-          dynamic_cast<QHBoxLayout*>(mainLayout)->insertWidget(0, sidebarScroll);
-      }
-  }
 
   // 初始化串口
   uart_core_ = new Uartcore;
