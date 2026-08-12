@@ -8,6 +8,7 @@
 #include <QStringList>
 #include <QVector>
 #include <QBoxLayout>
+#include <QGridLayout>
 #include <QTableWidgetItem>
 #include "ui/SerialWorker.hpp"
 #include "core/FieldSchema.hpp"
@@ -145,7 +146,7 @@ private:
   QWidget *protoLayoutBar_ = nullptr;       // 条状分段容器
   QWidget *protoLayoutLegend_ = nullptr;    // 图例容器
   QBoxLayout *protoLayoutBarLayout_ = nullptr;   // 条状分段水平布局
-  QBoxLayout *protoLayoutLegendLayout_ = nullptr; // 图例水平布局
+  QGridLayout *protoLayoutLegendLayout_ = nullptr; // 图例网格布局（多列左对齐）
 
   // 可视化实例（Qt 侧展示）
   QVector<ViewInstanceUi> vizViews_;

@@ -2,6 +2,7 @@
 *.qm
 build/
 build-*/
+build.*/
 build_verify/
 deploy/
 *.AppImage

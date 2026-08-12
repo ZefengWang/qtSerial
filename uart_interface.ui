@@ -219,11 +219,14 @@
            </property>
            <item>
             <widget class="QWidget" name="baseContentWidget">
-             <layout class="QHBoxLayout" name="baseContentLayout">
-              <property name="spacing">
-               <number>12</number>
-              </property>
-              <item>
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
+             <layout class="QVBoxLayout" name="baseContentLayout">
+              <item><widget class="QWidget" name="topRowWidget"><property name="sizePolicy"><sizepolicy hsizetype="Expanding" vsizetype="Expanding"><horstretch>1</horstretch><verstretch>1</verstretch></sizepolicy></property><layout class="QHBoxLayout" name="topRowLayout"><property name="spacing"><number>12</number></property><item>
                <widget class="QWidget" name="portConfigWidget">
                 <property name="sizePolicy">
                  <sizepolicy hsizetype="Fixed" vsizetype="Expanding">
@@ -510,6 +513,12 @@
               </item>
               <item>
                <widget class="QWidget" name="textPanelWidget">
+                <property name="sizePolicy">
+                 <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+                  <horstretch>1</horstretch>
+                  <verstretch>1</verstretch>
+                 </sizepolicy>
+                </property>
                 <layout class="QVBoxLayout" name="textPanelLayout">
                  <property name="spacing">
                   <number>8</number>
@@ -520,7 +529,7 @@
                  <property name="rightMargin">
                   <number>0</number>
                  </property>
-                 <item><widget class="QWidget" name="recvSectionWidget"><property name="sizePolicy"><sizepolicy><hsizetype>Expanding</hsizetype><vsizetype>Expanding</vsizetype><horstretch>0</horstretch><verstretch>0</verstretch></sizepolicy></property><layout class="QVBoxLayout" name="recvSectionLayout"><property name="spacing">8</property><property name="leftMargin">0</property><property name="rightMargin">0</property><item><widget class="QWidget" name="statusBarWidget">
+                 <item><widget class="QWidget" name="recvSectionWidget"><property name="sizePolicy"><sizepolicy hsizetype="Expanding" vsizetype="Expanding"><horstretch>1</horstretch><verstretch>1</verstretch></sizepolicy></property><layout class="QVBoxLayout" name="recvSectionLayout"><property name="spacing">8</property><property name="leftMargin">0</property><property name="rightMargin">0</property><item><widget class="QWidget" name="statusBarWidget">
              <property name="sizePolicy">
               <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
                <horstretch>0</horstretch>
@@ -719,7 +728,13 @@
                     </sizepolicy>
                    </property>
                   </widget>
-                 </item></layout></widget></item><item>
+                 </item></layout></widget></item></layout>
+               </widget>
+              </item>
+             </layout></widget></item><property name="spacing">
+               <number>12</number>
+              </property>
+              <item>
                   <widget class="QWidget" name="sendSectionWidget">
                    <property name="sizePolicy">
                     <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
@@ -940,9 +955,6 @@
                   </widget>
                  </item>
                 </layout>
-               </widget>
-              </item>
-             </layout>
             </widget>
            </item>
           </layout>
@@ -1148,7 +1160,92 @@
          </widget>
          <widget class="QWidget" name="pageProtocol">
           <layout class="QVBoxLayout" name="pageProtocolLayout">
-           <property name="spacing">
+           <item><widget class="QFrame" name="framePreviewSectionWidget"><layout class="QVBoxLayout" name="framePreviewSectionLayout"><property name="spacing"><number>8</number></property><property name="leftMargin"><number>12</number></property><property name="rightMargin"><number>12</number></property><property name="topMargin"><number>10</number></property><property name="bottomMargin"><number>10</number></property><item>
+               <widget class="QLabel" name="framePreviewTitle">
+                <property name="text">
+                 <string>帧字节布局预览</string>
+                </property>
+                <property name="font">
+                 <font>
+                  <pointsize>9</pointsize>
+                  <bold>true</bold>
+                 </font>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QWidget" name="framePreviewBar" native="true">
+                <property name="minimumSize">
+                 <size>
+                  <width>0</width>
+                  <height>32</height>
+                 </size>
+                </property>
+                <property name="maximumSize">
+                 <size>
+                  <width>16777215</width>
+                  <height>40</height>
+                 </size>
+                </property>
+                <layout class="QHBoxLayout" name="framePreviewBarLayout">
+                 <property name="spacing">
+                  <number>0</number>
+                 </property>
+                 <property name="leftMargin">
+                  <number>2</number>
+                 </property>
+                 <property name="topMargin">
+                  <number>2</number>
+                 </property>
+                 <property name="rightMargin">
+                  <number>2</number>
+                 </property>
+                 <property name="bottomMargin">
+                  <number>2</number>
+                 </property>
+                </layout>
+               </widget>
+              </item>
+              <item alignment="Qt::AlignLeft">
+               <widget class="QWidget" name="framePreviewLegend" native="true">
+                <property name="sizePolicy">
+                 <sizepolicy hsizetype="Maximum" vsizetype="Preferred">
+                  <horstretch>0</horstretch>
+                  <verstretch>0</verstretch>
+                 </sizepolicy>
+                </property>
+                <property name="maximumSize">
+                 <size>
+                  <width>16777215</width>
+                  <height>128</height>
+                 </size>
+                </property>
+                <property name="styleSheet">
+                 <string notr="true">background: transparent;</string>
+                </property>
+                <layout class="QGridLayout" name="framePreviewLegendLayout">
+                 <property name="horizontalSpacing">
+                  <number>16</number>
+                 </property>
+                 <property name="verticalSpacing">
+                  <number>4</number>
+                 </property>
+                 <property name="leftMargin">
+                  <number>0</number>
+                 </property>
+                 <property name="topMargin">
+                  <number>0</number>
+                 </property>
+                 <property name="rightMargin">
+                  <number>0</number>
+                 </property>
+                 <property name="bottomMargin">
+                  <number>0</number>
+                 </property>
+                </layout>
+               </widget>
+              </item>
+              </layout></widget></item><property name="spacing">
             <number>10</number>
            </property>
            <property name="leftMargin">
@@ -1322,79 +1419,6 @@
                   <string>长度</string>
                  </property>
                 </column>
-               </widget>
-              </item>
-              <item>
-               <widget class="QLabel" name="framePreviewTitle">
-                <property name="text">
-                 <string>帧字节布局预览</string>
-                </property>
-                <property name="font">
-                 <font>
-                  <pointsize>9</pointsize>
-                  <bold>true</bold>
-                 </font>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <widget class="QWidget" name="framePreviewBar" native="true">
-                <property name="minimumSize">
-                 <size>
-                  <width>0</width>
-                  <height>32</height>
-                 </size>
-                </property>
-                <property name="maximumSize">
-                 <size>
-                  <width>16777215</width>
-                  <height>40</height>
-                 </size>
-                </property>
-                <layout class="QHBoxLayout" name="framePreviewBarLayout">
-                 <property name="spacing">
-                  <number>0</number>
-                 </property>
-                 <property name="leftMargin">
-                  <number>2</number>
-                 </property>
-                 <property name="topMargin">
-                  <number>2</number>
-                 </property>
-                 <property name="rightMargin">
-                  <number>2</number>
-                 </property>
-                 <property name="bottomMargin">
-                  <number>2</number>
-                 </property>
-                </layout>
-               </widget>
-              </item>
-              <item>
-               <widget class="QWidget" name="framePreviewLegend" native="true">
-                <property name="maximumSize">
-                 <size>
-                  <width>16777215</width>
-                  <height>24</height>
-                 </size>
-                </property>
-                <property name="styleSheet">
-                 <string notr="true">background: transparent;</string>
-                </property>
-                <layout class="QHBoxLayout" name="framePreviewLegendLayout">
-                 <property name="leftMargin">
-                  <number>0</number>
-                 </property>
-                 <property name="topMargin">
-                  <number>0</number>
-                 </property>
-                 <property name="rightMargin">
-                  <number>0</number>
-                 </property>
-                 <property name="bottomMargin">
-                  <number>0</number>
-                 </property>
-                </layout>
                </widget>
               </item>
               <item>

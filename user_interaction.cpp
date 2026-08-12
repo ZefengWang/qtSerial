@@ -317,7 +317,7 @@ serial::serial(QWidget *parent) :
   protoLayoutBar_ = ui->framePreviewBar;
   protoLayoutBarLayout_ = qobject_cast<QHBoxLayout*>(ui->framePreviewBar->layout());
   protoLayoutLegend_ = ui->framePreviewLegend;
-  protoLayoutLegendLayout_ = qobject_cast<QHBoxLayout*>(ui->framePreviewLegend->layout());
+  protoLayoutLegendLayout_ = qobject_cast<QGridLayout*>(ui->framePreviewLegend->layout());
   renderProtoLayoutPreview();
 
   // 初始化可视化源列表
@@ -910,7 +910,7 @@ void serial::renderProtoLayoutPreview() {
     seg->setMinimumWidth(8);
     protoLayoutBarLayout_->addWidget(seg, static_cast<int>(pct * 10), Qt::AlignVCenter);
 
-    // 图例
+    // 图例（多列网格，全部左对齐）
     auto *ld = new QLabel(protoLayoutLegend_);
     QString name = fd.isPadding ? "padding" : QString::fromStdString(fd.name);
     ld->setText(QString("<span style='background:%1;'>  </span> %2 · %3B")
@@ -918,8 +918,14 @@ void serial::renderProtoLayoutPreview() {
                     .arg(len));
     ld->setStyleSheet(QString("color:%1;font-size:10px;"
                       "font-family:'JetBrains Mono',monospace;").arg(legendColor));
-    protoLayoutLegendLayout_->addWidget(ld);
+    const int kLegendCols = 4;
+    protoLayoutLegendLayout_->addWidget(
+        ld, i / kLegendCols, i % kLegendCols, Qt::AlignLeft | Qt::AlignVCenter);
   }
+
+  // 图例紧凑左对齐：固定为内容尺寸，配合 VBox 左对齐，避免 QGridLayout 横向均分拉伸
+  protoLayoutLegendLayout_->setSizeConstraint(QLayout::SetFixedSize);
+  protoLayoutLegend_->updateGeometry();
 }
 
 void serial::addProtoRow(const sd::FieldDesc &fd) {

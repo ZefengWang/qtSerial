@@ -447,6 +447,12 @@ QCheckBox:disabled::indicator {
 }
 
 /* --- Card Sections --- */
+#framePreviewSectionWidget {
+    background-color: #1a1b26;
+    border: 1px solid #3b4261;
+    border-radius: 8px;
+}
+
 #receiveSectionWidget,
 #sendSectionWidget {
     background-color: #24283b;
