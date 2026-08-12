@@ -1,5 +1,5 @@
 Package: serial-debug
-Version: 2.0.1
+Version: 2.1.0
 Section: electronics
 Priority: optional
 Architecture: amd64

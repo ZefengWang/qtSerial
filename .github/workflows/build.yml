@@ -10,7 +10,7 @@ on:
 
 env:
   APP_NAME: serial-debug
-  APP_VERSION: '2.0.1'
+  APP_VERSION: '2.1.0'
 
 jobs:
   # ===================== Linux Build =====================
@@ -339,21 +339,25 @@ jobs:
 
           NOTES="## Serial Debug Assistant v${{ env.APP_VERSION }}
 
-          ### 新增功能 / New Features
-          - 现代 UI 重设计，卡片式布局
-          - Modern UI redesign with card-based layout
-          - 默认跟随系统主题（GNOME/Adwaita），另提供暗色/亮色可选
-          - Defaults to the native system theme, with dark/light as options
-          - 多语言框架（中文/英文），菜单内切换
-          - Multi-language framework (Chinese/English) switchable from the menu
-          - 模态对话框，应用级模态，焦点不穿透
-          - Modal dialogs with true application-level modality
+          ### 本版本修复 / v2.1.0 Fixes
+          - 修复应用无图标（改用 PNG 图标，Linux 下正常显示）
+          - Fixed missing app icon (switched to PNG, displays correctly on Linux)
+          - 修复左侧串口配置侧边栏消失的问题
+          - Fixed the left serial-config sidebar disappearing
+          - 菜单栏新增 Settings → Advanced Settings 入口，可修改波特率等参数
+          - Added Settings → Advanced Settings menu entry (baud rate, data bits, parity, etc.)
+          - 切换语言即时生效，无需重启
+          - Language switching now takes effect immediately
+          - 可执行文件更名为小写 serial-debug
+          - Executable renamed to lowercase 'serial-debug'
+          - 完善 .desktop 文件（StartupWMClass/BinaryPattern），应用菜单正确显示与启动
+          - Improved .desktop file (StartupWMClass/BinaryPattern) for correct menu integration
 
           ### 下载说明 / Download
           - **deb 包**：直接下载 .deb 文件（无需解压 zip）。
-            - \`serial-debug_2.0.1_Linux-ubuntu2204-qt5-x86_64.deb\`（Qt5）
-            - \`serial-debug_2.0.1_Linux-ubuntu2404-qt6-x86_64.deb\`（Qt6）
-            - \`serial-debug_2.0.1_Linux-ubuntu2604-qt6-x86_64.deb\`（Qt6，Ubuntu 26.04 原生）
+            - \`serial-debug_2.1.0_Linux-ubuntu2204-qt5-x86_64.deb\`（Qt5）
+            - \`serial-debug_2.1.0_Linux-ubuntu2404-qt6-x86_64.deb\`（Qt6）
+            - \`serial-debug_2.1.0_Linux-ubuntu2604-qt6-x86_64.deb\`（Qt6，Ubuntu 26.04 原生）
           - **不要从 Actions 的 Artifacts 下载**——那里会把文件打成 zip。请从本 Release 的 Assets 直接下载原始 .deb。
           - **AppImage**：下载后 chmod +x 直接运行，无需安装。
           - **Windows**：解压 zip 后运行 serial-debug.exe。

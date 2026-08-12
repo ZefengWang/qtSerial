@@ -6,8 +6,8 @@
 #   ./build-deb.sh <binary> <version> <arch> <outdir> [qt-major]
 #
 # Examples:
-#   ./build-deb.sh build/serial-debug 2.0.1 amd64 build/deploy 5
-#   ./build-deb.sh build/serial-debug 2.0.1 amd64 build/deploy 6
+#   ./build-deb.sh build/serial-debug 2.1.0 amd64 build/deploy 5
+#   ./build-deb.sh build/serial-debug 2.1.0 amd64 build/deploy 6
 #
 # qt-major defaults to 5. When 5, uses control file with Qt5 Depends;
 # when 6, uses control.qt6 with Qt6 Depends.

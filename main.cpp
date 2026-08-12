@@ -14,7 +14,7 @@ int main(int argc, char *argv[])
   a.setApplicationName("serial-debug");
   a.setApplicationDisplayName("Serial Debug Assistant");
   a.setOrganizationName("SerialDebug");
-  a.setApplicationVersion("2.0.1");
+  a.setApplicationVersion("2.1.0");
   a.setWindowIcon(QIcon(":/logo"));
 
   // 初始化语言管理器（从 QSettings 读取上次选择，或使用系统语言）
