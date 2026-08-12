@@ -19,8 +19,14 @@ greaterThan(QT_MAJOR_VERSION, 5) {
 TARGET = serial-debug
 TEMPLATE = app
 
-# Version definition
-DEFINES += APP_VERSION=\\\"2.1.0\\\"
+# Version definition.
+# CI passes the version from the git tag via APP_VERSION_EXTERNAL (e.g.
+#   qmake MySerial.pro APP_VERSION_EXTERNAL=2.1.0
+# ). For local builds a default is kept so versioning never breaks.
+isEmpty(APP_VERSION_EXTERNAL) {
+    APP_VERSION_EXTERNAL = 2.1.0
+}
+DEFINES += APP_VERSION=\\\"$${APP_VERSION_EXTERNAL}\\\"
 
 SOURCES += \
     main.cpp \

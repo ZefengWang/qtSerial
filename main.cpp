@@ -5,6 +5,12 @@
 #include <QIcon>
 #include <QSettings>
 
+// Version injected at build time from the git tag (APP_VERSION macro).
+// Fallback keeps local builds working when the macro is absent.
+#ifndef APP_VERSION
+#define APP_VERSION "2.1.0"
+#endif
+
 int main(int argc, char *argv[])
 {
   QApplication a(argc, argv);
@@ -14,7 +20,7 @@ int main(int argc, char *argv[])
   a.setApplicationName("serial-debug");
   a.setApplicationDisplayName("Serial Debug Assistant");
   a.setOrganizationName("SerialDebug");
-  a.setApplicationVersion("2.1.0");
+  a.setApplicationVersion(APP_VERSION);
   a.setWindowIcon(QIcon(":/logo"));
 
   // 初始化语言管理器（从 QSettings 读取上次选择，或使用系统语言）

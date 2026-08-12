@@ -1,5 +1,11 @@
 cmake_minimum_required(VERSION 3.16)
-project(serial-debug VERSION 2.1.0 LANGUAGES CXX)
+
+# Version is normally injected by CI from the git tag via -DAPP_VERSION=2.1.0.
+# Keep a default so local CMake builds still work.
+if(NOT DEFINED APP_VERSION)
+    set(APP_VERSION "2.1.0")
+endif()
+project(serial-debug VERSION ${APP_VERSION} LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)

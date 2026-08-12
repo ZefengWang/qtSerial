@@ -10,7 +10,6 @@ on:
 
 env:
   APP_NAME: serial-debug
-  APP_VERSION: '2.1.0'
 
 jobs:
   # ===================== Linux Build =====================
@@ -62,6 +61,17 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v5
 
+      - name: Set version from git tag
+        run: |
+          # 优先从 tag（如 v2.1.0）提取版本号；无 tag 时退回 git describe。
+          if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+            VERSION="${GITHUB_REF#refs/tags/v}"
+          else
+            VERSION="$(git describe --tags --always --dirty 2>/dev/null || echo '0.0.0')"
+          fi
+          echo "APP_VERSION=${VERSION}" >> "$GITHUB_ENV"
+          echo "Resolved APP_VERSION=${VERSION}"
+
       - name: Install system dependencies (X11 + Wayland)
         run: |
           # GitHub runner 预装的 Microsoft/Azure 源偶尔返回 403，导致 apt-get update 失败，
@@ -109,7 +119,7 @@ jobs:
         run: |
           mkdir -p build
           cd build
-          ${{ matrix.qmake_cmd }} ../MySerial.pro CONFIG+=Release
+          ${{ matrix.qmake_cmd }} ../MySerial.pro CONFIG+=Release APP_VERSION_EXTERNAL="${{ env.APP_VERSION }}"
 
       - name: Build
         run: |
@@ -252,6 +262,17 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v5
 
+      - name: Set version from git tag
+        shell: bash
+        run: |
+          if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+            VERSION="${GITHUB_REF#refs/tags/v}"
+          else
+            VERSION="$(git describe --tags --always --dirty 2>/dev/null || echo '0.0.0')"
+          fi
+          echo "APP_VERSION=${VERSION}" >> "$GITHUB_ENV"
+          echo "Resolved APP_VERSION=${VERSION}"
+
       - name: Install Qt6
         uses: jurplel/install-qt-action@v4
         with:
@@ -272,7 +293,7 @@ jobs:
         run: |
           mkdir build
           cd build
-          qmake.exe ..\MySerial.pro CONFIG+=Release
+          qmake.exe ..\MySerial.pro CONFIG+=Release "APP_VERSION_EXTERNAL=${{ env.APP_VERSION }}"
 
       - name: Build
         shell: cmd
@@ -324,6 +345,12 @@ jobs:
         with:
           ref: ${{ github.ref }}
 
+      - name: Set version from git tag
+        run: |
+          VERSION="${GITHUB_REF#refs/tags/v}"
+          echo "APP_VERSION=${VERSION}" >> "$GITHUB_ENV"
+          echo "Resolved APP_VERSION=${VERSION}"
+
       - name: Download all artifacts (flattened)
         uses: actions/download-artifact@v7
         with:
@@ -339,7 +366,7 @@ jobs:
 
           NOTES="## Serial Debug Assistant v${{ env.APP_VERSION }}
 
-          ### 本版本修复 / v2.1.0 Fixes
+          ### 本版本修复 / v${{ env.APP_VERSION }} Fixes
           - 修复应用无图标（改用 PNG 图标，Linux 下正常显示）
           - Fixed missing app icon (switched to PNG, displays correctly on Linux)
           - 修复左侧串口配置侧边栏消失的问题
@@ -355,9 +382,9 @@ jobs:
 
           ### 下载说明 / Download
           - **deb 包**：直接下载 .deb 文件（无需解压 zip）。
-            - \`serial-debug_2.1.0_Linux-ubuntu2204-qt5-x86_64.deb\`（Qt5）
-            - \`serial-debug_2.1.0_Linux-ubuntu2404-qt6-x86_64.deb\`（Qt6）
-            - \`serial-debug_2.1.0_Linux-ubuntu2604-qt6-x86_64.deb\`（Qt6，Ubuntu 26.04 原生）
+            - \`serial-debug_${{ env.APP_VERSION }}_Linux-ubuntu2204-qt5-x86_64.deb\`（Qt5）
+            - \`serial-debug_${{ env.APP_VERSION }}_Linux-ubuntu2404-qt6-x86_64.deb\`（Qt6）
+            - \`serial-debug_${{ env.APP_VERSION }}_Linux-ubuntu2604-qt6-x86_64.deb\`（Qt6，Ubuntu 26.04 原生）
           - **不要从 Actions 的 Artifacts 下载**——那里会把文件打成 zip。请从本 Release 的 Assets 直接下载原始 .deb。
           - **AppImage**：下载后 chmod +x 直接运行，无需安装。
           - **Windows**：解压 zip 后运行 serial-debug.exe。
