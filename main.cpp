@@ -184,7 +184,9 @@ int main(int argc, char *argv[])
       LanguageManager::instance().initialize();
 
       QSettings settings;
-      QString savedTheme = settings.value("theme", "system").toString();
+      // 默认使用深色 Tokyo Night 主题（对齐 UI 原型），仅在用户显式选择
+      // "跟随系统"时才回退到原生样式。
+      QString savedTheme = settings.value("theme", "dark").toString();
       ThemeManager::instance().applyTheme(savedTheme);
 
       serial w;

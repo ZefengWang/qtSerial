@@ -254,6 +254,30 @@ QPushButton:disabled {
     border-color: #3b4261;
 }
 
+/* Refresh Ports Button - Green (base page left sidebar) */
+#refreshPortBtn {
+    background-color: #9ece6a;
+    border: 1px solid #9ece6a;
+    color: #1a1b26;
+    font-weight: 600;
+}
+
+#refreshPortBtn:hover {
+    background-color: #b8e084;
+    border-color: #b8e084;
+}
+
+#refreshPortBtn:pressed {
+    background-color: #8ec85a;
+    border-color: #8ec85a;
+}
+
+#refreshPortBtn:disabled {
+    background-color: #3b4261;
+    color: #565f89;
+    border-color: #3b4261;
+}
+
 /* Icon Button - Refresh */
 #refreshButton {
     background-color: #2a2e42;

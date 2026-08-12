@@ -432,6 +432,12 @@ jobs:
           - Fixed adding fields in the Protocol Parsing module
           - 启用 QML 宿主构建（HAVE_QML），QML 界面随主程序一起编译
           - Enabled the QML host build (HAVE_QML); the QML UI now compiles with the main binary
+          - 修复 Qt Widgets 主题：默认改为 Tokyo Night 深色蓝主题（原先 system 模式会回退到原生灰橙色）
+          - Fixed Qt Widgets theme: default to Tokyo Night dark blue (was falling back to native grey-orange under system mode)
+          - 移除菜单栏（View/Settings/Help），全部收口到设置页
+          - Removed menu bar (View/Settings/Help); all settings now live in the Settings page
+          - 基础界面新增数据位/校验/停止行、刷新端口按钮、RX 速率显示
+          - Basic page: added data bits/parity/stop bits row, refresh ports button, RX rate display
 
           ### 下载说明 / Download
           - **deb 包**：直接下载 .deb 文件（无需解压 zip）。

@@ -372,6 +372,33 @@
                 </property>
                </widget>
               </item>
+              <item>
+               <widget class="QFrame" name="statusDivider2">
+                <property name="frameShape">
+                 <enum>QFrame::VLine</enum>
+                </property>
+                <property name="frameShadow">
+                 <enum>QFrame::Plain</enum>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QLabel" name="rxRateLabel">
+                <property name="text">
+                 <string>RX Rate</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QLabel" name="rxRateValueLabel">
+                <property name="text">
+                 <string>0 B/s</string>
+                </property>
+                <property name="styleSheet">
+                 <string notr="true">font-weight: 600; color: #c0caf5; font-family: Consolas, "Courier New", monospace;</string>
+                </property>
+               </widget>
+              </item>
              </layout>
             </widget>
            </item>
@@ -558,6 +585,151 @@
                   </widget>
                  </item>
                  <item>
+                  <widget class="QLabel" name="dataBitsLabel">
+                   <property name="text">
+                    <string>Data Bits / Parity / Stop</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QWidget" name="dataBitsWidget">
+                   <layout class="QHBoxLayout" name="dataBitsLayout">
+                    <property name="spacing">
+                     <number>4</number>
+                    </property>
+                    <property name="leftMargin">
+                     <number>0</number>
+                    </property>
+                    <property name="topMargin">
+                     <number>0</number>
+                    </property>
+                    <property name="rightMargin">
+                     <number>0</number>
+                    </property>
+                    <property name="bottomMargin">
+                     <number>0</number>
+                    </property>
+                    <item>
+                     <widget class="QComboBox" name="dataBitsComboLeft">
+                      <property name="sizePolicy">
+                       <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+                        <horstretch>0</horstretch>
+                        <verstretch>0</verstretch>
+                       </sizepolicy>
+                      </property>
+                      <property name="minimumSize">
+                       <size>
+                        <width>56</width>
+                        <height>30</height>
+                       </size>
+                      </property>
+                      <property name="maximumSize">
+                       <size>
+                        <width>56</width>
+                        <height>30</height>
+                       </size>
+                      </property>
+                      <item>
+                       <property name="text">
+                        <string>8</string>
+                       </property>
+                      </item>
+                      <item>
+                       <property name="text">
+                        <string>7</string>
+                       </property>
+                      </item>
+                      <item>
+                       <property name="text">
+                        <string>6</string>
+                       </property>
+                      </item>
+                      <item>
+                       <property name="text">
+                        <string>5</string>
+                       </property>
+                      </item>
+                     </widget>
+                    </item>
+                    <item>
+                     <widget class="QComboBox" name="parityComboLeft">
+                      <property name="sizePolicy">
+                       <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+                        <horstretch>0</horstretch>
+                        <verstretch>0</verstretch>
+                       </sizepolicy>
+                      </property>
+                      <property name="minimumSize">
+                       <size>
+                        <width>64</width>
+                        <height>30</height>
+                       </size>
+                      </property>
+                      <item>
+                       <property name="text">
+                        <string>N</string>
+                       </property>
+                      </item>
+                      <item>
+                       <property name="text">
+                        <string>E</string>
+                       </property>
+                      </item>
+                      <item>
+                       <property name="text">
+                        <string>O</string>
+                       </property>
+                      </item>
+                     </widget>
+                    </item>
+                    <item>
+                     <widget class="QComboBox" name="stopBitsComboLeft">
+                      <property name="sizePolicy">
+                       <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+                        <horstretch>0</horstretch>
+                        <verstretch>0</verstretch>
+                       </sizepolicy>
+                      </property>
+                      <property name="minimumSize">
+                       <size>
+                        <width>48</width>
+                        <height>30</height>
+                       </size>
+                      </property>
+                      <item>
+                       <property name="text">
+                        <string>1</string>
+                       </property>
+                      </item>
+                      <item>
+                       <property name="text">
+                        <string>1.5</string>
+                       </property>
+                      </item>
+                      <item>
+                       <property name="text">
+                        <string>2</string>
+                       </property>
+                      </item>
+                     </widget>
+                    </item>
+                    <item>
+                     <spacer name="dataBitsSpacer">
+                      <property name="orientation">
+                       <enum>Qt::Horizontal</enum>
+                      </property>
+                      <property name="sizeHint" stdset="0">
+                       <size>
+                        <width>40</width>
+                        <height>20</height>
+                       </size>
+                      </property>
+                     </spacer>
+                    </item>
+                   </layout>
+                  </widget>
+                 </item>
+                 <item>
                   <widget class="QPushButton" name="openPortButton">
                    <property name="sizePolicy">
                     <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
@@ -573,6 +745,25 @@
                    </property>
                    <property name="text">
                     <string>Open Port</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QPushButton" name="refreshPortBtn">
+                   <property name="sizePolicy">
+                    <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+                     <horstretch>0</horstretch>
+                     <verstretch>0</verstretch>
+                    </sizepolicy>
+                   </property>
+                   <property name="minimumSize">
+                    <size>
+                     <width>0</width>
+                     <height>34</height>
+                    </size>
+                   </property>
+                   <property name="text">
+                    <string>Refresh Ports</string>
                    </property>
                   </widget>
                  </item>

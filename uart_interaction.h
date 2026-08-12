@@ -4,7 +4,6 @@
 #include <QMainWindow>
 #include <QTimer>
 #include <QDateTime>
-#include <QActionGroup>
 #include <QByteArray>
 #include <QStringList>
 #include <QVector>
@@ -91,11 +90,14 @@ private:
   void formatHexDisplay(QByteArray &data);
   QString formatByteCount(qint64 bytes);
 
-  void setupMenus();
   void retranslateUi();
 
   // 设置页辅助：加载当前主题/语言到下拉框，加载 worker_->config() 串口参数到内联控件
   void initSettingsPage();
+
+  // 基础页左侧串口参数 与 设置页内联参数 双向同步
+  void syncSerialSettingsLeftToSettingsPage();
+  void syncSerialSettingsSettingsPageToLeft();
 
   // 协议解析辅助
   void addProtoRow(const sd::FieldDesc &fd);
@@ -121,6 +123,11 @@ private:
   qint64 tx_quantity_ = 0;
   bool is_the_serial_port_open_ = false;
 
+  // RX 速率追踪
+  qint64 rx_rate_bytes_ = 0;
+  qint64 rx_rate_window_start_ = 0;
+  QTimer *rx_rate_timer_ = nullptr;
+
   // 终端命令历史
   QStringList cmdHistory_;
   int cmdHistoryPos_ = -1;
@@ -137,14 +144,6 @@ private:
 
   // 可视化实例（Qt 侧展示）
   QVector<ViewInstanceUi> vizViews_;
-
-  // Menu actions
-  QAction *m_actionExit;
-  QAction *m_actionAbout;
-  QMenu   *m_themeMenu;
-  QMenu   *m_languageMenu;
-  QActionGroup *m_themeGroup;
-  QActionGroup *m_languageGroup;
 };
 
 #endif // SERIAL_H

@@ -9,10 +9,6 @@
 #include <QTextStream>
 #include <QFileDialog>
 #include <QMessageBox>
-#include <QMenuBar>
-#include <QMenu>
-#include <QAction>
-#include <QActionGroup>
 #include <QSettings>
 #include <QEvent>
 #include <QApplication>
@@ -179,6 +175,20 @@ serial::serial(QWidget *parent) :
   send_timer_ = new QTimer(this);
   connect(send_timer_, SIGNAL(timeout()), this, SLOT(timerSendData()));
 
+  // RX 速率计时器（每秒刷新一次显示）
+  rx_rate_timer_ = new QTimer(this);
+  rx_rate_timer_->setInterval(1000);
+  connect(rx_rate_timer_, &QTimer::timeout, this, [this](){
+      qint64 now = QDateTime::currentMSecsSinceEpoch();
+      qint64 elapsed = now - rx_rate_window_start_;
+      if (elapsed <= 0) return;
+      double rate = (double)rx_rate_bytes_ * 1000.0 / (double)elapsed;
+      ui->rxRateValueLabel->setText(formatByteCount((qint64)rate) + "/s");
+      // 重置窗口
+      rx_rate_bytes_ = 0;
+      rx_rate_window_start_ = now;
+  });
+
   // 设置窗口图标
   setWindowIcon(QIcon(":/logo"));
 
@@ -187,6 +197,20 @@ serial::serial(QWidget *parent) :
 
   // 默认设置波特率为115200（第5项）
   ui->baudComboBox->setCurrentIndex(5);
+
+  // 初始化左侧数据位/校验/停止（从 worker_->config() 读取）
+  const sd::PortConfig &cfg0 = worker_->config();
+  {
+    QSignalBlocker b1(ui->dataBitsComboLeft);
+    QSignalBlocker b2(ui->parityComboLeft);
+    QSignalBlocker b3(ui->stopBitsComboLeft);
+    int di = ui->dataBitsComboLeft->findText(QString::number(cfg0.dataBits));
+    if (di >= 0) ui->dataBitsComboLeft->setCurrentIndex(di);
+    if (cfg0.parity >= 0 && cfg0.parity < ui->parityComboLeft->count())
+      ui->parityComboLeft->setCurrentIndex(cfg0.parity);
+    int si = ui->stopBitsComboLeft->findText(QString::number(cfg0.stopBits));
+    if (si >= 0) ui->stopBitsComboLeft->setCurrentIndex(si);
+  }
 
   // 数据经 EventBus 到达后，由 SerialWorker 转发为本信号
   connect(worker_, &SerialWorker::dataReceived, this, &serial::readSerialData);
@@ -202,10 +226,7 @@ serial::serial(QWidget *parent) :
   // 终端输入框回车发送
   connect(ui->termInput, &QLineEdit::returnPressed, this, &serial::onTermInputReturnPressed);
 
-  // 设置菜单（主题 + 语言 + 退出/关于）
-  setupMenus();
-
-  // 连接主题和语言变更信号
+  // 连接主题和语言变更信号（更新设置页下拉框）
   connect(&ThemeManager::instance(), &ThemeManager::themeChanged,
           this, &serial::onThemeChanged);
   connect(&LanguageManager::instance(), &LanguageManager::languageChanged,
@@ -277,64 +298,23 @@ void serial::setupConnections() {
           this, &serial::on_applyInlineSettingsBtn_clicked);
   connect(ui->resetInlineSettingsBtn, &QPushButton::clicked,
           this, &serial::on_resetInlineSettingsBtn_clicked);
-}
 
-void serial::setupMenus() {
-  QMenuBar *menuBar = this->menuBar();
+  // 基础页：刷新端口按钮（左侧大按钮，与右侧小刷新按钮同效）
+  connect(ui->refreshPortBtn, &QPushButton::clicked,
+          this, &serial::on_refreshButton_clicked);
 
-  // --- View Menu (Theme + Language) ---
-  QMenu *viewMenu = menuBar->addMenu(tr("View"));
-
-  // Theme submenu
-  m_themeMenu = viewMenu->addMenu(tr("Theme"));
-  m_themeGroup = new QActionGroup(this);
-  m_themeGroup->setExclusive(true);
-
-  QString currentTheme = ThemeManager::instance().currentTheme();
-  for (const QString &theme : ThemeManager::instance().availableThemes()) {
-      QAction *act = m_themeMenu->addAction(ThemeManager::instance().themeDisplayName(theme));
-      act->setCheckable(true);
-      act->setChecked(theme == currentTheme);
-      act->setData(theme);
-      m_themeGroup->addAction(act);
-      connect(act, &QAction::triggered, this, [this, theme]() {
-          ThemeManager::instance().applyTheme(theme);
-      });
-  }
-
-  viewMenu->addSeparator();
-
-  // Language submenu
-  m_languageMenu = viewMenu->addMenu(tr("Language"));
-  m_languageGroup = new QActionGroup(this);
-  m_languageGroup->setExclusive(true);
-
-  QString currentLang = LanguageManager::instance().currentLanguage();
-  for (const QString &lang : LanguageManager::instance().availableLanguages()) {
-      QAction *act = m_languageMenu->addAction(LanguageManager::instance().languageDisplayName(lang));
-      act->setCheckable(true);
-      act->setChecked(lang == currentLang);
-      act->setData(lang);
-      m_languageGroup->addAction(act);
-      connect(act, &QAction::triggered, this, [this, lang]() {
-          LanguageManager::instance().setLanguage(lang);
-      });
-  }
-
-  // --- Settings Menu ---
-  QMenu *settingsMenu = menuBar->addMenu(tr("Settings"));
-  QAction *m_settingsAction = settingsMenu->addAction(tr("Advanced Settings..."));
-  connect(m_settingsAction, &QAction::triggered, this, &serial::on_advancedSettingsBtn_clicked);
-
-  // --- Help Menu ---
-  QMenu *helpMenu = menuBar->addMenu(tr("Help"));
-  m_actionAbout = helpMenu->addAction(tr("About"));
-  connect(m_actionAbout, &QAction::triggered, this, [this]() {
-      QMessageBox::about(this, tr("About"),
-          tr("<h3>Serial Debug Assistant</h3>"
-             "<p>Version 2.3</p>"
-             "<p>A modern cross-platform serial port debug tool.</p>"
-             "<p>Four UI variants: Qt Widgets / TUI / QML / Browser.</p>"));
+  // 基础页：左侧数据位/校验/停止 与 worker_->config() 双向同步（改变即写回）
+  connect(ui->dataBitsComboLeft, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this](){
+      worker_->config().dataBits = ui->dataBitsComboLeft->currentText().toInt();
+      syncSerialSettingsLeftToSettingsPage();
+  });
+  connect(ui->parityComboLeft, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this](){
+      worker_->config().parity = ui->parityComboLeft->currentIndex();
+      syncSerialSettingsLeftToSettingsPage();
+  });
+  connect(ui->stopBitsComboLeft, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this](){
+      worker_->config().stopBits = ui->stopBitsComboLeft->currentText().toDouble();
+      syncSerialSettingsLeftToSettingsPage();
   });
 }
 
@@ -349,9 +329,8 @@ void serial::retranslateUi() {
   // Retranslate all static UI labels from the .ui file
   ui->retranslateUi(this);
 
-  // Retranslate menu titles
-  menuBar()->clear();
-  setupMenus();
+  // 重新填充设置页下拉框（主题/语言文本随语言变化）
+  initSettingsPage();
 
   // Retranslate dynamic UI elements
   updateConnectionStatus(is_the_serial_port_open_);
@@ -365,15 +344,17 @@ void serial::retranslateUi() {
 }
 
 void serial::onThemeChanged(const QString &themeName) {
-  for (QAction *act : m_themeGroup->actions()) {
-      act->setChecked(act->data().toString() == themeName);
-  }
+  // 同步设置页"主题"下拉框
+  int idx = ui->themeCombo->findData(themeName);
+  if (idx >= 0 && ui->themeCombo->currentIndex() != idx)
+      ui->themeCombo->setCurrentIndex(idx);
 }
 
 void serial::onLanguageChanged(const QString &languageCode) {
-  for (QAction *act : m_languageGroup->actions()) {
-      act->setChecked(act->data().toString() == languageCode);
-  }
+  // 同步设置页"语言"下拉框
+  int idx = ui->languageCombo->findData(languageCode);
+  if (idx >= 0 && ui->languageCombo->currentIndex() != idx)
+      ui->languageCombo->setCurrentIndex(idx);
 }
 
 void serial::loadStyleSheet() {
@@ -425,9 +406,18 @@ void serial::updateConnectionStatus(bool connected) {
     ui->portComboBox->setEnabled(false);
     ui->baudComboBox->setEnabled(false);
     ui->refreshButton->setEnabled(false);
+    ui->refreshPortBtn->setEnabled(false);
     ui->advancedSettingsBtn->setEnabled(false);
+    ui->dataBitsComboLeft->setEnabled(false);
+    ui->parityComboLeft->setEnabled(false);
+    ui->stopBitsComboLeft->setEnabled(false);
 
     ui->openPortButton->setText(tr("Close Port"));
+
+    // 启动 RX 速率计时器
+    rx_rate_bytes_ = 0;
+    rx_rate_window_start_ = QDateTime::currentMSecsSinceEpoch();
+    rx_rate_timer_->start();
 
     // 终端页状态
     ui->termStatusLabel->setText(tr("● Connected"));
@@ -440,9 +430,17 @@ void serial::updateConnectionStatus(bool connected) {
     ui->portComboBox->setEnabled(true);
     ui->baudComboBox->setEnabled(true);
     ui->refreshButton->setEnabled(true);
+    ui->refreshPortBtn->setEnabled(true);
     ui->advancedSettingsBtn->setEnabled(true);
+    ui->dataBitsComboLeft->setEnabled(true);
+    ui->parityComboLeft->setEnabled(true);
+    ui->stopBitsComboLeft->setEnabled(true);
 
     ui->openPortButton->setText(tr("Open Port"));
+
+    // 停止 RX 速率计时器
+    rx_rate_timer_->stop();
+    ui->rxRateValueLabel->setText("0 B/s");
 
     // 终端页状态
     ui->termStatusLabel->setText(tr("● Disconnected"));
@@ -584,6 +582,9 @@ void serial::readSerialData(const QByteArray &data) {
 
   rx_quantity_ += data.length();
   ui->rxCountLabel->setText(formatByteCount(rx_quantity_));
+
+  // 累加 RX 速率
+  rx_rate_bytes_ += data.length();
 }
 
 void serial::on_clearTextButton_clicked() {
@@ -1174,6 +1175,9 @@ void serial::on_applyInlineSettingsBtn_clicked() {
   cfg.parity      = ui->parityCombo->currentIndex();      // 0=No,1=Even,2=Odd,3=Space,4=Mark
   cfg.flowControl = ui->flowCtrlCombo->currentIndex();    // 0=No,1=Hardware,2=Software
 
+  // 同步到基础页左侧下拉
+  syncSerialSettingsSettingsPageToLeft();
+
   appendReceiveData(tr("[System] Serial settings applied: %1 data bits, %2 stop bits, parity=%3, flow=%4")
       .arg(cfg.dataBits)
       .arg(cfg.stopBits)
@@ -1195,5 +1199,29 @@ void serial::on_resetInlineSettingsBtn_clicked() {
   ui->parityCombo->setCurrentIndex(cfg.parity);
   ui->flowCtrlCombo->setCurrentIndex(cfg.flowControl);
 
+  // 同步到基础页左侧下拉
+  syncSerialSettingsSettingsPageToLeft();
+
   appendReceiveData(tr("[System] Serial settings reset to defaults (8 1 None None)"));
+}
+
+void serial::syncSerialSettingsLeftToSettingsPage() {
+  // 左侧 -> 设置页内联
+  const sd::PortConfig &cfg = worker_->config();
+  int di = ui->dataBitsCombo->findText(QString::number(cfg.dataBits));
+  if (di >= 0) ui->dataBitsCombo->setCurrentIndex(di);
+  ui->parityCombo->setCurrentIndex(cfg.parity);
+  int si = ui->stopBitsCombo->findText(QString::number(cfg.stopBits));
+  if (si >= 0) ui->stopBitsCombo->setCurrentIndex(si);
+}
+
+void serial::syncSerialSettingsSettingsPageToLeft() {
+  // 设置页内联 -> 左侧
+  const sd::PortConfig &cfg = worker_->config();
+  int di = ui->dataBitsComboLeft->findText(QString::number(cfg.dataBits));
+  if (di >= 0) ui->dataBitsComboLeft->setCurrentIndex(di);
+  if (cfg.parity >= 0 && cfg.parity < ui->parityComboLeft->count())
+    ui->parityComboLeft->setCurrentIndex(cfg.parity);
+  int si = ui->stopBitsComboLeft->findText(QString::number(cfg.stopBits));
+  if (si >= 0) ui->stopBitsComboLeft->setCurrentIndex(si);
 }
