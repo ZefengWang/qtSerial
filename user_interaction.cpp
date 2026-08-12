@@ -27,6 +27,7 @@
 #include <QPolygonF>
 #include <QStyledItemDelegate>
 #include <QComboBox>
+#include <QPainterPath>
 #include <cmath>
 
 // 校验位缩写：0=None,1=Even,2=Odd,3=Space,4=Mark
@@ -39,6 +40,53 @@ static QString parityShortName(int parity) {
         default: return QLatin1String("N");
     }
 }
+
+// ============================================================
+// 自绘帧布局主色条：整体圆角 + 细边框 + 无缝分段 + 字段名
+// 对齐原型 .layout-main（overflow:hidden 圆角裁剪）。
+// ============================================================
+class ProtoBarWidget : public QWidget {
+public:
+    explicit ProtoBarWidget(QWidget *parent = nullptr) : QWidget(parent) {}
+    struct Seg { QColor color; QString name; double frac; };
+    void setSegs(const QVector<Seg> &segs) { segs_ = segs; update(); }
+protected:
+    void paintEvent(QPaintEvent *) override {
+        QPainter p(this);
+        p.setRenderHint(QPainter::Antialiasing);
+        QRectF r = QRectF(rect()).adjusted(0.5, 0.5, -0.5, -0.5);
+        if (segs_.isEmpty()) {
+            p.setPen(QColor(255, 255, 255, 60));
+            p.drawRoundedRect(r, 6, 6);
+            return;
+        }
+        // 裁剪到圆角范围
+        QPainterPath clip;
+        clip.addRoundedRect(r, 6, 6);
+        p.setClipPath(clip);
+        double x = r.left();
+        double total = 0;
+        for (const auto &s : segs_) total += s.frac;
+        for (const auto &s : segs_) {
+            double w = r.width() * s.frac / total;
+            p.fillRect(QRectF(x, r.top(), w, r.height()), s.color);
+            // 字段名（居中，窄段省略）
+            if (w > 16) {
+                p.setPen(QColor("#1a1b26"));
+                QFont f = font(); f.setBold(true); f.setPointSize(7);
+                p.setFont(f);
+                p.drawText(QRectF(x, r.top(), w, r.height()),
+                           Qt::AlignCenter, s.name);
+            }
+            x += w;
+        }
+        p.setClipping(false);
+        p.setPen(QColor(255, 255, 255, 60));
+        p.drawRoundedRect(r, 6, 6);
+    }
+private:
+    QVector<Seg> segs_;
+};
 
 // ============================================================
 // 私有辅助：一个可绘制波形/3D 姿态的视图卡片。
@@ -888,40 +936,47 @@ void serial::renderProtoLayoutPreview() {
       "#7aa2f7", "#9ece6a", "#e0af68", "#f7768e",
       "#bb9af7", "#2ac3de", "#73daca", "#ff9e64"};
 
+  // 收集分段数据（自绘主色条）
+  QVector<ProtoBarWidget::Seg> segs;
   for (int i = 0; i < protoFields_.size(); ++i) {
     const sd::FieldDesc &fd = protoFields_.at(i);
     int len = lens.at(i);
     double pct = (double)len * 100.0 / (double)total;
     QString color = kSegColors[i % 8];
+    ProtoBarWidget::Seg sg;
+    sg.color = QColor(color);
+    sg.name = fd.isPadding ? "pad" : QString::fromStdString(fd.name);
+    sg.frac = pct;
+    segs.append(sg);
 
-    // 分段（原型为无缝连续色条：无间距、无圆角，字段间以颜色区分）
-    auto *seg = new QFrame(protoLayoutBar_);
-    seg->setFixedHeight(28);
-    seg->setStyleSheet(QString("background:%1;border:none;").arg(color));
-    auto *segLay = new QHBoxLayout(seg);
-    segLay->setContentsMargins(2, 0, 2, 0);
-    segLay->setAlignment(Qt::AlignCenter);
-    auto *segLabel = new QLabel(fd.isPadding ? "pad" : QString::fromStdString(fd.name), seg);
-    segLabel->setStyleSheet("color:#1a1b26;font-weight:700;font-size:8px;");
-    segLabel->setAlignment(Qt::AlignCenter);
-    segLay->addWidget(segLabel);
-    // 设置宽度占比
-    seg->setFixedHeight(28);
-    seg->setMinimumWidth(8);
-    protoLayoutBarLayout_->addWidget(seg, static_cast<int>(pct * 10), Qt::AlignVCenter);
-
-    // 图例（多列网格，全部左对齐）
-    auto *ld = new QLabel(protoLayoutLegend_);
+    // 图例项：彩色小方块 + 字段名 + 字节数（对齐原型 layout-legend）
+    auto *ldw = new QWidget(protoLayoutLegend_);
+    auto *ldl = new QHBoxLayout(ldw);
+    ldl->setContentsMargins(0, 0, 0, 0);
+    ldl->setSpacing(5);
+    auto *sw = new QFrame(ldw);
+    sw->setFixedSize(10, 10);
+    sw->setStyleSheet(QString("background:%1;border:none;border-radius:2px;").arg(color));
+    auto *tx = new QLabel(ldw);
     QString name = fd.isPadding ? "padding" : QString::fromStdString(fd.name);
-    ld->setText(QString("<span style='background:%1;'>  </span> %2 · %3B")
-                    .arg(color, name)
-                    .arg(len));
-    ld->setStyleSheet(QString("color:%1;font-size:10px;"
-                      "font-family:'JetBrains Mono',monospace;").arg(legendColor));
+    tx->setText(QString("%1 %2B").arg(name).arg(len));
+    tx->setStyleSheet(QString("color:%1;font-size:10px;"
+                      "font-family:'JetBrains Mono',monospace;"
+                      "background:transparent;").arg(legendColor));
+    ldl->addWidget(sw);
+    ldl->addWidget(tx);
     const int kLegendCols = 4;
     protoLayoutLegendLayout_->addWidget(
-        ld, i / kLegendCols, i % kLegendCols, Qt::AlignLeft | Qt::AlignVCenter);
+        ldw, i / kLegendCols, i % kLegendCols, Qt::AlignLeft | Qt::AlignVCenter);
   }
+
+  // 自绘主色条（整体圆角 + 边框 + 无缝分段）
+  auto *bar = new ProtoBarWidget(protoLayoutBar_);
+  bar->setMinimumHeight(28);
+  bar->setMaximumHeight(28);
+  bar->setSegs(segs);
+  bar->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+  protoLayoutBarLayout_->addWidget(bar);
 
   // 图例紧凑左对齐：固定为内容尺寸，配合 VBox 左对齐，避免 QGridLayout 横向均分拉伸
   protoLayoutLegendLayout_->setSizeConstraint(QLayout::SetFixedSize);
