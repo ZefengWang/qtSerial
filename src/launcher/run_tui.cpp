@@ -29,11 +29,78 @@
 #include <QDateTime>
 #include <QByteArray>
 #include <iostream>
+#include <cstdio>
+
+#include "core/FieldSchema.hpp"
+#include "core/PortConfig.hpp"
+#include "core/Frame.hpp"
+#include "service/FieldPool.hpp"
+#include "service/ProtocolEngine.hpp"
+#include "ui/SerialWorker.hpp"
 
 namespace {
 
 SerialWorker* g_tui_worker = nullptr;
 bool g_tui_open = false;
+
+// 协议解析状态：当前正在编辑的字段列表（未应用）、最近一次帧。
+static std::vector<sd::FieldDesc> g_editFields;
+static QString g_editName = "cust";
+static bool g_editBigEndian = false;
+static bool g_editDirty = false;
+static qint64 g_tui_rxBytes = 0;
+static qint64 g_tui_txBytes = 0;
+
+const char* fieldTypeName(sd::FieldType t) {
+    switch (t) {
+        case sd::FieldType::U8:   return "uint8";
+        case sd::FieldType::U16:  return "uint16";
+        case sd::FieldType::U32:  return "uint32";
+        case sd::FieldType::I8:   return "int8";
+        case sd::FieldType::I16:  return "int16";
+        case sd::FieldType::I32:  return "int32";
+        case sd::FieldType::F32:  return "float32";
+        case sd::FieldType::F64:  return "float64";
+        case sd::FieldType::Bool: return "bool";
+    }
+    return "?";
+}
+
+sd::FieldType fieldTypeFromName(const QString& n) {
+    const QString v = n.toLower();
+    if (v == "u8")   return sd::FieldType::U8;
+    if (v == "u16")  return sd::FieldType::U16;
+    if (v == "u32")  return sd::FieldType::U32;
+    if (v == "i8")   return sd::FieldType::I8;
+    if (v == "i16")  return sd::FieldType::I16;
+    if (v == "i32")  return sd::FieldType::I32;
+    if (v == "f32" || v == "float" || v == "float32") return sd::FieldType::F32;
+    if (v == "f64" || v == "float64") return sd::FieldType::F64;
+    if (v == "bool") return sd::FieldType::Bool;
+    return sd::FieldType::F32;
+}
+
+void tuiEcho(const QString &s); // 前向声明（applyCurrentSchema 使用）
+
+void applyCurrentSchema() {
+    if (g_editFields.empty()) {
+        tuiEcho("No fields defined. Add fields first: field add <name> <type> [len]");
+        return;
+    }
+    sd::ProtocolSchema schema;
+    schema.name = g_editName.toStdString();
+    schema.defaultBigEndian = g_editBigEndian;
+    schema.fields = g_editFields;
+    if (g_tui_worker->applyProtocolSchema(schema)) {
+        g_editDirty = false;
+        tuiEcho(QString("Protocol '%1' applied (%2 fields, %3 bytes/frame).")
+                    .arg(g_editName)
+                    .arg(g_editFields.size())
+                    .arg(schema.totalBytes()));
+    } else {
+        tuiEcho("Failed to apply protocol schema.");
+    }
+}
 
 void tuiEcho(const QString &s) {
     QTextStream out(stdout);
@@ -49,15 +116,31 @@ void handleTuiLine(const QString &raw) {
 
     if (cmd == "help") {
         tuiEcho(QString(
-            "Commands:\n"
-            "  help                     this help\n"
-            "  list                     list available serial ports\n"
-            "  open <port> [baud]       open port (default baud 115200)\n"
-            "  close                    close current port\n"
-            "  send <text>              send text (append CR+LF)\n"
-            "  hex <AA BB ...>          send hex bytes\n"
-            "  ui switch <qt|web|qml>   switch UI host (restart app)\n"
-            "  quit | exit              quit"));
+            "Serial Debug TUI — 基础界面 + 终端交互 + 协议解析\n"
+            "----------------------------------------\n"
+            "基础界面：\n"
+            "  list                              列出可用串口\n"
+            "  open <port> [baud]                打开串口（默认 115200）\n"
+            "  close                             关闭串口\n"
+            "  send <text>                       发送文本（默认加 CR+LF）\n"
+            "  send -n <text>                    发送文本（不加换行）\n"
+            "  hex <AA BB ...>                   发送十六进制字节\n"
+            "  stat                              显示 RX/TX 字节计数\n"
+            "终端交互：\n"
+            "  term <cmd>                        发送命令到交互式设备并回显\n"
+            "协议解析：\n"
+            "  proto [name]                      查看/设置协议名\n"
+            "  field add <name> <type> [len]     添加字段（type: u8/u16/u32/i8/i16/i32/f32/f64/bool）\n"
+            "  field addpad <name> <len>         添加 padding 占位字段\n"
+            "  field list                        列出已定义字段\n"
+            "  field clear                       清空字段\n"
+            "  field rm <name>                   删除字段\n"
+            "  endian <little|big>               设置字节序\n"
+            "  schema                            应用协议并开始解析\n"
+            "  pstat                             查看当前协议与最近一帧字段值\n"
+            "----------------------------------------\n"
+            "  ui switch <qt|tui|web|qml>        切换 UI（重启进程）\n"
+            "  quit | exit                       退出"));
     } else if (cmd == "list") {
         QStringList ports = g_tui_worker->scanPorts();
         if (ports.isEmpty()) {
@@ -83,16 +166,102 @@ void handleTuiLine(const QString &raw) {
         tuiEcho("Closed.");
     } else if (cmd == "send") {
         if (!g_tui_open) { tuiEcho("Port not open."); return; }
-        if (parts.size() < 2) { tuiEcho("usage: send <text>"); return; }
-        QByteArray data = raw.mid(5).toLatin1() + "\r\n";
-        g_tui_worker->send(data);
-        tuiEcho(QString("TX: %1 bytes").arg(data.size()));
+        if (parts.size() < 2) { tuiEcho("usage: send <text> | send -n <text>"); return; }
+        bool noNewline = false;
+        QString payload = raw.mid(5);
+        if (parts[1] == "-n") { noNewline = true; payload = raw.mid(8); }
+        QByteArray data = payload.toLatin1();
+        if (!noNewline) data += "\r\n";
+        qint64 n = g_tui_worker->send(data);
+        g_tui_txBytes += n;
+        tuiEcho(QString("TX: %1 bytes").arg(n));
     } else if (cmd == "hex") {
         if (!g_tui_open) { tuiEcho("Port not open."); return; }
         if (parts.size() < 2) { tuiEcho("usage: hex <AA BB ...>"); return; }
         QByteArray data = SerialWorker::hexStringToByteArray(raw.mid(4));
-        g_tui_worker->send(data);
-        tuiEcho(QString("TX hex: %1 bytes").arg(data.size()));
+        qint64 n = g_tui_worker->send(data);
+        g_tui_txBytes += n;
+        tuiEcho(QString("TX hex: %1 bytes").arg(n));
+    } else if (cmd == "stat") {
+        tuiEcho(QString("RX: %1 bytes   TX: %2 bytes   %3")
+                    .arg(g_tui_rxBytes).arg(g_tui_txBytes)
+                    .arg(g_tui_open ? "connected" : "closed"));
+    } else if (cmd == "term") {
+        if (!g_tui_open) { tuiEcho("Port not open."); return; }
+        QString payload = raw.mid(5).trimmed();
+        if (payload.isEmpty()) { tuiEcho("usage: term <command>"); return; }
+        QByteArray data = payload.toLatin1() + "\r\n";
+        qint64 n = g_tui_worker->send(data);
+        g_tui_txBytes += n;
+        tuiEcho(QString("$ %1  (TX %2 B)").arg(payload).arg(n));
+    } else if (cmd == "proto") {
+        if (parts.size() >= 2) { g_editName = parts[1]; g_editDirty = true;
+            tuiEcho(QString("Protocol name set to '%1' (run 'schema' to apply).").arg(g_editName)); return; }
+        tuiEcho(QString("Protocol: %1 (editing: %2 fields, %3)")
+                    .arg(g_tui_worker->protocolEngine().current().c_str())
+                    .arg(g_editFields.size())
+                    .arg(g_editDirty ? "dirty" : "clean"));
+    } else if (cmd == "field" && parts.size() >= 2) {
+        const QString sub = parts[1].toLower();
+        if (sub == "add" && parts.size() >= 4) {
+            sd::FieldDesc f;
+            f.name = parts[2].toStdString();
+            f.type = fieldTypeFromName(parts[3]);
+            f.bigEndian = g_editBigEndian;
+            if (parts.size() >= 5) f.byteLength = parts[4].toInt();
+            g_editFields.push_back(f);
+            g_editDirty = true;
+            tuiEcho(QString("Added field '%1' (%2, %3 B).")
+                        .arg(QString::fromStdString(f.name))
+                        .arg(fieldTypeName(f.type))
+                        .arg(f.byteLength > 0 ? f.byteLength : 0));
+        } else if (sub == "addpad" && parts.size() >= 3) {
+            sd::FieldDesc f;
+            f.name = parts[2].toStdString();
+            f.isPadding = true;
+            f.byteLength = (parts.size() >= 4) ? parts[3].toInt() : 1;
+            g_editFields.push_back(f);
+            g_editDirty = true;
+            tuiEcho(QString("Added padding '%1' (%2 B).").arg(parts[2]).arg(f.byteLength));
+        } else if (sub == "list") {
+            if (g_editFields.empty()) { tuiEcho("No fields defined."); return; }
+            tuiEcho(QString("%1 | %2 | %3 | %4").arg("name", -12).arg("type", -8).arg("len", -4).arg("note"));
+            int i = 0;
+            for (const auto& f : g_editFields) {
+                tuiEcho(QString("%1 | %2 | %3 | %4")
+                            .arg(QString::fromStdString(f.name), -12)
+                            .arg(fieldTypeName(f.type), -8)
+                            .arg(f.byteLength > 0 ? f.byteLength : 0)
+                            .arg(f.isPadding ? "padding" : ""));
+            }
+        } else if (sub == "clear") {
+            g_editFields.clear(); g_editDirty = true;
+            tuiEcho("All fields cleared.");
+        } else if (sub == "rm" && parts.size() >= 3) {
+            const QString n = parts[2];
+            for (auto it = g_editFields.begin(); it != g_editFields.end(); ++it)
+                if (QString::fromStdString(it->name) == n) { g_editFields.erase(it); g_editDirty = true; tuiEcho("Removed " + n); return; }
+            tuiEcho("Field not found: " + n);
+        } else {
+            tuiEcho("usage: field add|addpad|list|clear|rm");
+        }
+    } else if (cmd == "endian") {
+        if (parts.size() < 2) { tuiEcho("usage: endian <little|big>"); return; }
+        g_editBigEndian = (parts[1].toLower() == "big");
+        g_editDirty = true;
+        tuiEcho(QString("Byte order set to %1.").arg(g_editBigEndian ? "big-endian" : "little-endian"));
+    } else if (cmd == "schema") {
+        applyCurrentSchema();
+    } else if (cmd == "pstat") {
+        const auto& pool = g_tui_worker->fieldPool();
+        if (!pool.hasSchema()) { tuiEcho("No protocol applied. Define fields and run 'schema'."); return; }
+        tuiEcho(QString("Protocol: %1").arg(pool.protocolName().c_str()));
+        const auto& srcs = pool.sources();
+        if (srcs.empty()) { tuiEcho("  (no data sources)"); return; }
+        for (const auto& s : srcs) {
+            QString v = s.hasData ? QString::number(s.lastValue, 'f', 3) : "--";
+            tuiEcho(QString("  %1 = %2 %3").arg(s.name.c_str(), -12).arg(v, -10).arg(s.unit.c_str()));
+        }
     } else if (cmd == "ui" && parts.size() >= 2 && parts[1] == "switch") {
         if (parts.size() < 3) { tuiEcho("usage: ui switch <qt|web|qml>"); return; }
         ui_mode::restartWithMode(ui_mode::fromString(parts[2]));
@@ -112,13 +281,28 @@ int runTui(QCoreApplication& app) {
 
     QObject::connect(g_tui_worker, &SerialWorker::dataReceived,
                      [](const QByteArray &data) {
+        g_tui_rxBytes += data.size();
         QString ts = QDateTime::currentDateTime().toString("HH:mm:ss.zzz");
         QTextStream out(stdout);
         out << "[" << ts << "] RX: " << QString::fromLatin1(data) << "\n";
         out.flush();
     });
 
-    tuiEcho("Serial Debug TUI (same core as desktop). Type 'help'.");
+    // 协议解析帧：显示字段名/值（对齐原型"协议解析"界面）。
+    QObject::connect(g_tui_worker, &SerialWorker::frameReceived,
+                     [](const sd::Frame &frame) {
+        QTextStream out(stdout);
+        out << "── frame #" << frame.seq << " [" << QString::fromStdString(frame.name) << "]\n";
+        for (const auto& kv : frame.numeric)
+            out << "    " << QString::fromStdString(kv.first) << " = "
+                << QString::number(kv.second, 'g', 6) << "\n";
+        for (const auto& kv : frame.text)
+            out << "    " << QString::fromStdString(kv.first) << " = "
+                << QString::fromStdString(kv.second) << "\n";
+        out.flush();
+    });
+
+    tuiEcho("Serial Debug TUI — 基础界面 + 终端交互 + 协议解析 (type 'help').");
     tuiEcho("Ports: " + g_tui_worker->scanPorts().join(", "));
 
     QFile inFile;

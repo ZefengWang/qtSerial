@@ -134,12 +134,6 @@ h4.h .tag{font-family:var(--font-mono);font-size:10.5px;color:var(--accent);back
 .pg-tab.active{background:var(--tokyo-accent);color:#1a1b26;font-weight:700}
 .pg-tab.base{color:rgba(192,202,245,.9)}
 .pg-tab .x{margin-left:6px;color:rgba(192,202,245,.5)}
-/* 设置页 mock */
-.set-nav{width:150px;display:flex;flex-direction:column;gap:4px;flex-shrink:0}
-.set-nav-item{padding:7px 10px;border-radius:6px;font-size:11px;color:rgba(192,202,245,.65);cursor:pointer;background:transparent}
-.set-nav-item.active{background:rgba(122,162,247,.14);color:var(--tokyo-accent);font-weight:700}
-.set-pane{display:flex;flex-direction:column;gap:9px;background:var(--tokyo-bg2);border-radius:8px;padding:12px}
-.set-foot{margin-top:6px;font-size:10px;color:rgba(192,202,245,.55)}
 
 /* view / viz canvas */
 .vm{display:grid;grid-template-columns:260px 1fr;gap:12px}
@@ -216,7 +210,6 @@ h4.h .tag{font-family:var(--font-mono);font-size:10.5px;color:var(--accent);back
     <button class="variant-btn active" data-v="term" type="button">终端交互</button>
     <button class="variant-btn" data-v="proto" type="button">协议解析</button>
     <button class="variant-btn" data-v="viz" type="button">可视化配置</button>
-    <button class="variant-btn" data-v="set" type="button">设置</button>
     <button class="variant-btn" data-v="host" type="button">四套宿主</button>
   </div>
 </div>
@@ -644,92 +637,6 @@ h4.h .tag{font-family:var(--font-mono);font-size:10.5px;color:var(--accent);back
         <li><b>P4</b>：TUI（无头）</li>
         <li><b>P5</b>：浏览器（WebSocket）+ QML（可选 GPU）</li>
       </ul>
-    </div>
-  </section>
-
-  <!-- ============ 06 设置 ============ -->
-  <section class="variant-panel" id="panel-set">
-    <h2 class="sec"><span class="num">06</span>设置（软件 / 高级串口 / 插件管理）</h2>
-    <p class="sec-sub">独立的<b>设置界面</b>：界面上方新增第 5 个标签页"设置"，与此前四页并列。设置页内分三类——<b>软件设置</b>（主题/语言/自动开浏览器/定时发送间隔）、<b>高级串口设置</b>（原模态窗改为内联，数据位/停止位/校验/流控）、<b>插件管理</b>（规划中占位）。</p>
-
-    <div class="card" style="margin-bottom:16px">
-      <h4 class="h">设置分类 <span class="tag">三类</span></h4>
-      <div class="grid-3">
-        <div class="dtl">
-          <h4 class="h">软件设置 <span class="tag">应用</span></h4>
-          <ul>
-            <li>主题：跟随系统 / 深色 Tokyo Night / 浅色</li>
-            <li>语言：中文 / English</li>
-            <li>启动时自动打开浏览器开关</li>
-            <li>定时发送默认间隔（ms）</li>
-          </ul>
-        </div>
-        <div class="dtl">
-          <h4 class="h">高级串口设置 <span class="tag">内联</span></h4>
-          <ul>
-            <li>数据位 5/6/7/8 · 停止位 1/1.5/2</li>
-            <li>校验 None/Even/Odd · 流控 None/RTS-CTS/XON-XOFF</li>
-            <li>应用并打开串口 / 恢复默认按钮</li>
-            <li>原模态窗废弃，改为内联面板</li>
-          </ul>
-        </div>
-        <div class="dtl">
-          <h4 class="h">插件管理 <span class="tag">规划中</span></h4>
-          <ul>
-            <li>插件列表占位面板</li>
-            <li>扩展方向：协议解析 / 数据可视化 / 导出</li>
-            <li>当前为空态提示"规划中"</li>
-          </ul>
-        </div>
-      </div>
-    </div>
-
-    <div class="frame-box">
-      <div class="host-mock" style="max-width:720px">
-        <div class="host-bar">
-          <div class="dots"><span style="background:#f7768e"></span><span style="background:#e0af68"></span><span style="background:#9ece6a"></span></div>
-          <span style="color:rgba(192,202,245,.7)">serial-debug · 设置</span>
-        </div>
-        <div class="pg-tabs">
-          <span class="pg-tab base">基础</span>
-          <span class="pg-tab">终端</span>
-          <span class="pg-tab">协议解析</span>
-          <span class="pg-tab">可视化</span>
-          <span class="pg-tab active">设置</span>
-        </div>
-        <div class="pg-body">
-          <div class="set-nav">
-            <div class="set-nav-item active">软件设置</div>
-            <div class="set-nav-item">高级串口设置</div>
-            <div class="set-nav-item">插件管理</div>
-          </div>
-          <div class="set-pane" style="flex:1">
-            <div class="w-field"><label>主题</label><div class="box">深色（Tokyo Night）▾</div></div>
-            <div class="w-field"><label>语言</label><div class="box">中文 ▾</div></div>
-            <div class="w-field"><label>启动时自动打开浏览器</label><div class="box">是</div></div>
-            <div class="w-field"><label>定时发送默认间隔（ms）</label><div class="box">1000</div></div>
-            <div class="set-foot">主题与语言即时生效；持久化保存在本地配置。</div>
-          </div>
-        </div>
-      </div>
-    </div>
-    <div class="grid-2" style="margin-top:16px">
-      <div class="dtl">
-        <h4 class="h">高级串口设置（内联 mock） <span class="tag">替代模态</span></h4>
-        <ul>
-          <li>数据位 8、停止位 1、校验 None、流控 None</li>
-          <li>"应用并打开串口" / "恢复默认"内联按钮</li>
-          <li>仅对下次打开串口生效</li>
-        </ul>
-      </div>
-      <div class="dtl">
-        <h4 class="h">插件管理（规划中） <span class="tag">空态</span></h4>
-        <ul>
-          <li>插件列表占位面板</li>
-          <li>扩展协议解析 / 可视化 / 导出等能力</li>
-          <li>空态提示"插件系统规划中"</li>
-        </ul>
-      </div>
     </div>
   </section>
 

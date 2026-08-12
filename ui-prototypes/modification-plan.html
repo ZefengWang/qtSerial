@@ -209,8 +209,8 @@ h4.h .tag{font-family:var(--font-mono);font-size:10.5px;color:var(--accent);back
     <button class="variant-btn" data-v="base" type="button">基础+发送</button>
     <button class="variant-btn" data-v="term" type="button">终端交互</button>
     <button class="variant-btn" data-v="proto" type="button">协议解析</button>
-    <button class="variant-btn active" data-v="viz" type="button">可视化配置</button>
-    <button class="variant-btn" data-v="host" type="button">四套宿主</button>
+    <button class="variant-btn" data-v="viz" type="button">可视化配置</button>
+    <button class="variant-btn active" data-v="host" type="button">四套宿主</button>
   </div>
 </div>
 
@@ -464,7 +464,7 @@ h4.h .tag{font-family:var(--font-mono);font-size:10.5px;color:var(--accent);back
   </section>
 
   <!-- ============ 04 可视化配置 ============ -->
-  <section class="variant-panel active" id="panel-viz">
+  <section class="variant-panel" id="panel-viz">
     <h2 class="sec"><span class="num">04</span>可视化配置（独立界面）</h2>
     <p class="sec-sub">独立于协议解析的<b>可视化配置界面</b>：<b>读取当前协议的字段类型与长度</b>，为每个视图选择<b>互斥的可视化类型</b>（波形 / 3D姿态），并选择<b>哪些字段充当数据源</b>。支持多实例、多数据源、多曲线合一或各自独立。</p>
 
@@ -606,7 +606,7 @@ h4.h .tag{font-family:var(--font-mono);font-size:10.5px;color:var(--accent);back
   </section>
 
   <!-- ============ 05 四套宿主 ============ -->
-  <section class="variant-panel" id="panel-host">
+  <section class="variant-panel active" id="panel-host">
     <h2 class="sec"><span class="num">05</span>四套宿主承载</h2>
     <p class="sec-sub">同一套"基础 / 终端 / 协议解析 / 可视化配置"能力，四套 UI 各自承载。</p>
     <div class="grid-4">
@@ -666,4 +666,4 @@ h4.h .tag{font-family:var(--font-mono);font-size:10.5px;color:var(--accent);back
 })();
 </script>
 
-</body><div id="immersive-translate-selection-translation-button" style="all: initial"></div></html>
+</body></html>

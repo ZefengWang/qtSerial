@@ -310,6 +310,34 @@ QTextBrowser {
     background-color: #16161e;
 }
 
+/* --- Plain Text Edit (terminal page) --- */
+QPlainTextEdit {
+    background-color: #1a1b26;
+    border: 1px solid #3b4261;
+    border-radius: 8px;
+    color: #c0caf5;
+    padding: 8px;
+    selection-background-color: #3b4261;
+    selection-color: #c0caf5;
+    font-family: "Consolas", "Courier New", "Microsoft YaHei Mono", monospace;
+    font-size: 13px;
+}
+
+QPlainTextEdit:focus {
+    border-color: #7aa2f7;
+    outline: none;
+}
+
+/* --- Scroll Area (viz page) --- */
+QScrollArea {
+    background-color: transparent;
+    border: none;
+}
+
+QScrollArea > QWidget > QWidget {
+    background-color: transparent;
+}
+
 /* --- Line Edit --- */
 QLineEdit {
     background-color: #1a1b26;
@@ -576,6 +604,12 @@ QSpinBox:hover, QDoubleSpinBox:hover {
 
 QSpinBox:focus, QDoubleSpinBox:focus {
     border-color: #7aa2f7;
+    outline: none;
+}
+
+QSpinBox:disabled {
+    background-color: #24283b;
+    color: #565f89;
 }
 
 QSpinBox::up-button, QDoubleSpinBox::up-button,
@@ -588,4 +622,70 @@ QSpinBox::down-button, QDoubleSpinBox::down-button {
 QSpinBox::up-button:hover, QDoubleSpinBox::up-button:hover,
 QSpinBox::down-button:hover, QDoubleSpinBox::down-button:hover {
     background-color: #3b4261;
+}
+
+/* --- Table Widget (protocol page) --- */
+QTableWidget {
+    background-color: #1a1b26;
+    border: 1px solid #3b4261;
+    border-radius: 8px;
+    color: #c0caf5;
+    outline: none;
+}
+
+QTableWidget::item {
+    padding: 4px 6px;
+}
+
+QTableWidget::item:selected {
+    background-color: #2a2e42;
+    color: #7aa2f7;
+}
+
+QTableWidget::header {
+    background-color: #24283b;
+}
+
+QTableWidget::horizontalHeader {
+    border-bottom: 1px solid #3b4261;
+}
+
+QTableWidget::verticalHeader {
+    background-color: #24283b;
+    border-right: 1px solid #3b4261;
+}
+
+QHeaderView::section {
+    background-color: #24283b;
+    color: #565f89;
+    border: none;
+    padding: 6px 8px;
+}
+
+/* --- List Widget (viz page) --- */
+QListWidget {
+    background-color: #1a1b26;
+    border: 1px solid #3b4261;
+    border-radius: 8px;
+    color: #c0caf5;
+    outline: none;
+}
+
+QListWidget::item {
+    padding: 6px 8px;
+    border-radius: 4px;
+}
+
+QListWidget::item:hover {
+    background-color: #2a2e42;
+}
+
+QListWidget::item:selected {
+    background-color: #2a2e42;
+    color: #7aa2f7;
+}
+
+/* --- Stacked Widget --- */
+QStackedWidget {
+    background-color: #16161e;
 }

@@ -8,6 +8,7 @@
 #include <QByteArray>
 #include <QStringList>
 #include <QVector>
+#include <QBoxLayout>
 #include "ui/SerialWorker.hpp"
 #include "core/FieldSchema.hpp"
 
@@ -94,6 +95,10 @@ private:
   sd::FieldType comboToFieldType(const QString &txt) const;
   QString fieldTypeToCombo(sd::FieldType t) const;
 
+  // 帧布局预览（对齐原型：字段字节条状图 + 图例）
+  void setupProtoLayoutPreview();
+  void renderProtoLayoutPreview();
+
   // 可视化辅助
   void refreshVizSources();
   void rebuildVizViews();
@@ -113,6 +118,13 @@ private:
 
   // 协议模型（当前编辑中的字段）
   QVector<sd::FieldDesc> protoFields_;
+
+  // 帧布局预览控件（对齐原型）
+  QWidget *protoLayoutSection_ = nullptr;   // 整个"帧布局预览"区块
+  QWidget *protoLayoutBar_ = nullptr;       // 条状分段容器
+  QWidget *protoLayoutLegend_ = nullptr;    // 图例容器
+  QBoxLayout *protoLayoutBarLayout_ = nullptr;   // 条状分段水平布局
+  QBoxLayout *protoLayoutLegendLayout_ = nullptr; // 图例水平布局
 
   // 可视化实例（Qt 侧展示）
   QVector<ViewInstanceUi> vizViews_;

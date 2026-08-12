@@ -219,6 +219,9 @@ serial::serial(QWidget *parent) :
   ui->protoTable->setSelectionBehavior(QAbstractItemView::SelectRows);
   ui->protoTable->setSelectionMode(QAbstractItemView::SingleSelection);
 
+  // 初始化帧布局预览（对齐原型"帧字节布局预览"区）
+  setupProtoLayoutPreview();
+
   // 初始化可视化源列表
   ui->vizSourceList->setSelectionMode(QAbstractItemView::MultiSelection);
 
@@ -705,6 +708,128 @@ QString serial::fieldTypeToCombo(sd::FieldType t) const {
   return "float";
 }
 
+// ============================================================
+// 帧布局预览（对齐原型：协议解析页的"帧字节布局预览"）
+// 用一条水平条状分段 + 图例，展示每字段按字节占比的布局。
+// ============================================================
+void serial::setupProtoLayoutPreview() {
+  // 标题行
+  auto *title = new QLabel(tr("帧字节布局预览"), ui->pageProtocol);
+  QFont tf = title->font();
+  tf.setPointSize(9);
+  tf.setBold(true);
+  title->setFont(tf);
+
+  // 条状分段容器（高度 30，水平排列）
+  protoLayoutBar_ = new QWidget(ui->pageProtocol);
+  protoLayoutBar_->setFixedHeight(30);
+  protoLayoutBar_->setStyleSheet(
+      "QWidget{background:#0d0d14;border:1px solid rgba(255,255,255,.15);"
+      "border-radius:6px;}");
+  auto *barLayout = new QHBoxLayout(protoLayoutBar_);
+  barLayout->setContentsMargins(0, 0, 0, 0);
+  barLayout->setSpacing(1);
+  protoLayoutBar_->setLayout(barLayout);
+  protoLayoutBarLayout_ = barLayout;
+
+  // 图例容器
+  protoLayoutLegend_ = new QWidget(ui->pageProtocol);
+  protoLayoutLegend_->setStyleSheet("background:transparent;");
+  protoLayoutLegend_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Minimum);
+  auto *legendLayout = new QHBoxLayout(protoLayoutLegend_);
+  legendLayout->setContentsMargins(0, 0, 0, 0);
+  legendLayout->setSpacing(12);
+  protoLayoutLegend_->setLayout(legendLayout);
+  protoLayoutLegendLayout_ = legendLayout;
+
+  // 组装区块
+  protoLayoutSection_ = new QWidget(ui->pageProtocol);
+  auto *sectionLayout = new QVBoxLayout(protoLayoutSection_);
+  sectionLayout->setContentsMargins(0, 0, 0, 0);
+  sectionLayout->setSpacing(6);
+  sectionLayout->addWidget(title);
+  sectionLayout->addWidget(protoLayoutBar_);
+  sectionLayout->addWidget(protoLayoutLegend_);
+
+  // 插入到字段编辑列的最底部（应用协议按钮之后）
+  if (ui->protoEditLayout) {
+    ui->protoEditLayout->addWidget(protoLayoutSection_);
+  }
+
+  renderProtoLayoutPreview();
+}
+
+void serial::renderProtoLayoutPreview() {
+  if (!protoLayoutBar_ || !protoLayoutLegend_) return;
+
+  // 清空条状容器
+  while (auto *item = protoLayoutBarLayout_->takeAt(0)) {
+    if (item->widget()) item->widget()->deleteLater();
+    delete item;
+  }
+  // 清空图例容器
+  while (auto *item = protoLayoutLegendLayout_->takeAt(0)) {
+    if (item->widget()) item->widget()->deleteLater();
+    delete item;
+  }
+
+  // 收集字段及字节数
+  QVector<int> lens;
+  qint64 total = 0;
+  for (const auto &fd : protoFields_) {
+    int len = fd.byteLength > 0 ? fd.byteLength : sd::fieldTypeBytes(fd.type);
+    lens.append(len);
+    total += len;
+  }
+
+  if (protoFields_.isEmpty() || total <= 0) {
+    auto *empty = new QLabel(tr("— 空 —"), protoLayoutBar_);
+    empty->setAlignment(Qt::AlignCenter);
+    empty->setStyleSheet("color:rgba(192,202,245,.5);font-size:10px;");
+    protoLayoutBarLayout_->addWidget(empty);
+    return;
+  }
+
+  // 颜色板（与原型/Web 一致）
+  static const QString kSegColors[] = {
+      "#7aa2f7", "#9ece6a", "#e0af68", "#f7768e",
+      "#bb9af7", "#2ac3de", "#73daca", "#ff9e64"};
+
+  for (int i = 0; i < protoFields_.size(); ++i) {
+    const sd::FieldDesc &fd = protoFields_.at(i);
+    int len = lens.at(i);
+    double pct = (double)len * 100.0 / (double)total;
+    QString color = kSegColors[i % 8];
+
+    // 分段
+    auto *seg = new QFrame(protoLayoutBar_);
+    seg->setFixedHeight(28);
+    seg->setStyleSheet(QString("background:%1;border:none;border-radius:3px;")
+                           .arg(color));
+    auto *segLay = new QHBoxLayout(seg);
+    segLay->setContentsMargins(2, 0, 2, 0);
+    segLay->setAlignment(Qt::AlignCenter);
+    auto *segLabel = new QLabel(fd.isPadding ? "pad" : QString::fromStdString(fd.name), seg);
+    segLabel->setStyleSheet("color:#1a1b26;font-weight:700;font-size:8px;");
+    segLabel->setAlignment(Qt::AlignCenter);
+    segLay->addWidget(segLabel);
+    // 设置宽度占比
+    seg->setMinimumSize(8, 28);
+    seg->setMaximumWidth(static_cast<int>(protoLayoutBar_->width() * pct / 100.0));
+    protoLayoutBarLayout_->addWidget(seg, static_cast<int>(pct), Qt::AlignLeft);
+
+    // 图例
+    auto *ld = new QLabel(protoLayoutLegend_);
+    QString name = fd.isPadding ? "padding" : QString::fromStdString(fd.name);
+    ld->setText(QString("<span style='background:%1;'>  </span> %2 · %3B")
+                    .arg(color, name)
+                    .arg(len));
+    ld->setStyleSheet("color:rgba(192,202,245,.75);font-size:10px;"
+                      "font-family:'JetBrains Mono',monospace;");
+    protoLayoutLegendLayout_->addWidget(ld);
+  }
+}
+
 void serial::addProtoRow(const sd::FieldDesc &fd) {
   int row = ui->protoTable->rowCount();
   ui->protoTable->insertRow(row);
@@ -728,6 +853,7 @@ void serial::addProtoRow(const sd::FieldDesc &fd) {
   int len = fd.byteLength > 0 ? fd.byteLength : sd::fieldTypeBytes(fd.type);
   QTableWidgetItem *ln = new QTableWidgetItem(QString("%1B").arg(len));
   ui->protoTable->setItem(row, 3, ln);
+  renderProtoLayoutPreview();
 }
 
 void serial::rebuildProtoTable(const std::vector<sd::FieldDesc> &fields) {
@@ -749,6 +875,7 @@ void serial::on_removeFieldButton_clicked() {
   if (row < 0) return;
   ui->protoTable->removeRow(row);
   if (row < protoFields_.size()) protoFields_.remove(row);
+  renderProtoLayoutPreview();
 }
 
 void serial::on_protoTable_itemSelectionChanged() {
@@ -790,6 +917,7 @@ void serial::on_applyFieldButton_clicked() {
   int len = fd.byteLength > 0 ? fd.byteLength : sd::fieldTypeBytes(fd.type);
   ui->protoTable->item(row, 3)->setText(QString("%1B").arg(len));
   ui->protoTable->item(row, 0)->setCheckState(fd.isPadding ? Qt::Unchecked : Qt::Checked);
+  renderProtoLayoutPreview();
 }
 
 void serial::collectSchemaFromTable() {

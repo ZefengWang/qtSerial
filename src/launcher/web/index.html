@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-immersive-translate-page-theme="dark"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>串口调试助手 · Web</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#16161e; --bg2:#1a1b26; --panel:#12121a; --panel2:#0d0d14;
+  --fg:#c0caf5; --fg-dim:rgba(192,202,245,.6); --fg-mut:rgba(192,202,245,.45);
+  --accent:#7aa2f7; --green:#9ece6a; --yellow:#e0af68; --red:#f7768e;
+  --rule:rgba(255,255,255,.1); --rule2:rgba(255,255,255,.06);
+  --radius:8px; --mono:ui-monospace,'JetBrains Mono',Consolas,monospace;
+}
+body{font-family:system-ui,-apple-system,'PingFang SC',sans-serif;background:var(--bg);color:var(--fg);height:100vh;display:flex;flex-direction:column;overflow:hidden}
+/* ===== 顶部标题栏（对齐原型 host-bar）===== */
+.appbar{height:50px;background:#24283b;display:flex;align-items:center;gap:14px;padding:0 18px;border-bottom:1px solid rgba(255,255,255,.08);flex-shrink:0}
+.appbar .brand{font-size:14px;font-weight:700;color:var(--accent);letter-spacing:.3px}
+.appbar .st{font-size:12px;color:var(--green)}
+.appbar .st.off{color:#565f89}
+.appbar .meta{margin-left:auto;font-size:12px;color:#565f89}
+/* ===== 横向标签页（对齐原型 pg-tabs）===== */
+.pg-tabs{display:flex;align-items:center;gap:4px;padding:10px 18px 0;background:#1a1b26;border-bottom:1px solid rgba(255,255,255,.08);flex-shrink:0}
+.pg-tab{display:flex;align-items:center;gap:8px;padding:9px 20px;border-radius:8px 8px 0 0;cursor:pointer;font-size:13px;color:#9aa5ce;transition:all .15s;border-bottom:2px solid transparent}
+.pg-tab:hover{background:#24283b;color:var(--fg)}
+.pg-tab.active{background:var(--bg2);color:var(--accent);font-weight:600;border-bottom-color:var(--accent)}
+.pg-tab .ico{font-size:14px;opacity:.9}
+/* ===== 主区 ===== */
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.content{flex:1;overflow-y:auto;padding:18px}
+.page{display:none}.page.active{display:block}
+.ttl{font-size:15px;color:var(--fg);margin-bottom:4px;font-weight:600}
+.sub{font-size:12px;color:var(--fg-dim);margin-bottom:14px}
+/* ===== 卡片 ===== */
+.card{background:var(--bg2);border:1px solid var(--rule);border-radius:var(--radius);padding:14px;margin-bottom:14px}
+.card h3{font-size:12px;color:var(--accent);margin-bottom:12px;font-weight:600;letter-spacing:.3px}
+label{font-size:12px;opacity:.7;display:block;margin-bottom:4px}
+select,input,textarea{background:var(--panel);color:var(--fg);border:1px solid var(--rule);border-radius:6px;padding:8px;font-size:13px;width:100%;font-family:var(--mono)}
+select:focus,input:focus,textarea:focus{outline:none;border-color:var(--accent)}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.row>select{flex:1;min-width:140px}.row>input{flex:1;min-width:90px}
+button{background:var(--accent);color:#1a1b26;border:none;border-radius:6px;padding:9px 16px;cursor:pointer;font-weight:600;font-size:13px}
+button.sec{background:var(--green)}button.warn{background:var(--yellow)}button.danger{background:var(--red)}
+button.ghost{background:transparent;border:1px solid var(--rule);color:var(--fg)}
+button:disabled{opacity:.4;cursor:not-allowed}
+/* ===== 状态条 ===== */
+.statusbar{display:flex;gap:16px;flex-wrap:wrap;font-size:11px;padding:7px 12px;background:var(--bg2);border:1px solid var(--rule2);border-radius:6px;margin-bottom:12px;align-items:center}
+.statusbar b{color:var(--green);font-weight:600;font-family:var(--mono)}
+.statusbar .dot{width:8px;height:8px;border-radius:50%;background:#565f89;display:inline-block;margin-right:5px}
+.statusbar .dot.on{background:var(--green)}
+.statusbar .sp{margin-left:auto}
+/* ===== 基础页：左配置 + 右收发 ===== */
+.base-grid{display:grid;grid-template-columns:200px 1fr;gap:14px}
+@media(max-width:900px){.base-grid{grid-template-columns:1fr}}
+.side-col{display:flex;flex-direction:column;gap:10px}
+.w-field{display:flex;flex-direction:column;gap:3px}
+.w-field label{font-size:11px;color:var(--fg-dim)}
+.w-field .box{background:var(--panel2);border:1px solid var(--rule);border-radius:6px;padding:7px 10px;font-size:12px;font-family:var(--mono);color:var(--fg)}
+.w-btn{border:none;border-radius:6px;padding:9px;font-size:12px;font-weight:700;cursor:pointer;background:var(--accent);color:#1a1b26}
+.w-btn.green{background:var(--green)}
+.w-btn.ghost{background:transparent;border:1px solid var(--rule);color:var(--fg)}
+.recv{background:var(--panel);border:1px solid var(--rule2);border-radius:6px;padding:10px 12px;height:260px;overflow:auto;font-family:var(--mono);font-size:12px;line-height:1.65;white-space:pre-wrap}
+.recv .t{color:var(--fg-mut)}
+.recv .raw{color:var(--fg)}
+.recv .out{color:var(--yellow)}
+.recv .rxline{color:var(--fg)}
+.recv .txline{color:var(--yellow)}
+.sendbox{background:var(--panel);border:1px solid var(--rule);border-radius:6px;padding:10px;margin-top:12px}
+.send-row{display:flex;gap:8px;align-items:center}
+.send-row .prompt{color:var(--green);font-weight:700}
+.send-row input.main{flex:1;background:var(--panel2);border:1px solid var(--rule);border-radius:6px;color:var(--fg);font-family:var(--mono);font-size:12px;padding:8px 10px}
+.send-row input.main:focus{outline:none;border-color:var(--accent)}
+.send-btn{background:var(--green);color:#1a1b26;border:none;border-radius:6px;padding:8px 16px;font-size:12px;font-weight:700;cursor:pointer}
+.opt-row{display:flex;gap:14px;margin-top:8px;font-size:11px;color:var(--fg-dim);align-items:center;flex-wrap:wrap}
+.chk{display:flex;align-items:center;gap:4px;cursor:pointer}
+.chk input{width:auto;margin:0}
+/* ===== 终端页 ===== */
+.term{background:var(--panel2);border:1px solid var(--rule);border-radius:6px;padding:12px 14px;font-size:12px;line-height:1.65;height:300px;overflow:auto;font-family:var(--mono);white-space:pre-wrap}
+.term .p{color:var(--green)}
+.term .o{color:var(--fg-dim)}
+.term .e{color:var(--red)}
+.term .inputline{display:flex;gap:6px;align-items:center}
+.term .inputline .p{color:var(--green);flex-shrink:0}
+.term .inputline input{flex:1;background:transparent;border:none;color:var(--fg);font-family:var(--mono);font-size:12px;outline:none;padding:0}
+/* ===== 协议页 ===== */
+.proto-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:900px){.proto-grid{grid-template-columns:1fr}}
+.proto-table{width:100%;border-collapse:collapse;font-size:12px;font-family:var(--mono)}
+.proto-table th{font-family:system-ui;font-size:11px;color:var(--fg-dim);text-align:left;padding:6px 8px;border-bottom:1px solid var(--rule);font-weight:600}
+.proto-table td{padding:6px 8px;border-bottom:1px solid var(--rule2);color:var(--fg)}
+.proto-table tr.pad td{color:var(--fg-mut);background:rgba(255,255,255,.02)}
+.proto-table .del{color:var(--red);cursor:pointer;opacity:.7}
+.proto-table .del:hover{opacity:1}
+.proto-table input{background:transparent;border:1px solid transparent;border-radius:4px;padding:3px 5px;font-family:var(--mono);font-size:12px;color:var(--fg);width:100%}
+.proto-table input:focus{outline:none;border-color:var(--accent);background:var(--panel)}
+.proto-table select{background:var(--panel);border:1px solid transparent;border-radius:4px;padding:3px 5px;font-size:12px;color:var(--fg);width:100%}
+.ttype{display:inline-block;background:#1f2335;border:1px solid var(--rule);border-radius:4px;padding:1px 6px;color:var(--fg);font-family:var(--mono);font-size:10px}
+.ttype.acc{color:var(--accent);border-color:rgba(122,162,247,.4)}
+/* 帧布局预览 */
+.layoutbar{display:flex;flex-direction:column;gap:6px;margin-top:8px}
+.layout-main{display:flex;height:30px;border-radius:6px;overflow:hidden;border:1px solid var(--rule)}
+.layout-main .seg{display:flex;align-items:center;justify-content:center;font-size:9px;font-family:var(--mono);color:#1a1b26;font-weight:700;white-space:nowrap;overflow:hidden;min-width:0}
+.layout-legend{display:flex;flex-wrap:wrap;gap:10px;font-size:10px;color:var(--fg-dim)}
+.layout-legend .ld{display:flex;align-items:center;gap:4px}
+.layout-legend .sw{width:10px;height:10px;border-radius:2px}
+/* ===== 可视化页 ===== */
+.viz-grid{display:grid;grid-template-columns:250px 1fr;gap:14px}
+@media(max-width:900px){.viz-grid{grid-template-columns:1fr}}
+.src-list{display:flex;flex-direction:column;gap:5px}
+.src-item{display:flex;align-items:center;gap:8px;background:var(--panel);border:1px solid var(--rule);border-radius:6px;padding:6px 9px;font-size:12px;cursor:pointer}
+.src-item.on{border-color:var(--accent);background:rgba(122,162,247,.08)}
+.src-item .sname{color:var(--fg);font-weight:600}
+.src-item .stype{color:var(--fg-mut);font-size:10px;margin-left:auto}
+.src-item .chk{margin-left:6px}
+.src-item .chk .sel{width:12px;height:12px;border:1px solid rgba(255,255,255,.25);border-radius:3px;display:inline-block}
+.src-item.on .chk .sel{background:var(--accent);border-color:var(--accent)}
+.vtype-row{display:flex;gap:6px;margin-top:10px}
+.vtype-row .vt{flex:1;text-align:center;border:1px solid var(--rule);border-radius:6px;padding:8px;font-size:11px;cursor:pointer;color:var(--fg)}
+.vtype-row .vt.active{border-color:var(--accent);background:rgba(122,162,247,.12);color:var(--accent)}
+.vtype-row .vt small{display:block;font-size:9px;color:var(--fg-mut);margin-top:2px;font-family:system-ui}
+.vm-canvas{display:flex;flex-direction:column;gap:12px}
+.view-card{background:var(--panel);border:1px solid var(--rule);border-radius:8px;overflow:hidden}
+.view-card .vc-head{display:flex;align-items:center;gap:8px;padding:7px 12px;background:var(--bg2);font-size:11px;border-bottom:1px solid var(--rule2)}
+.view-card .vc-head .vc-title{color:var(--accent);font-weight:700}
+.view-card .vc-head .vc-ch{color:var(--fg-dim);font-size:10px}
+.view-card .vc-head .clk{margin-left:auto;color:var(--fg-mut);cursor:pointer;font-size:13px}
+.view-card .vc-head .clk:hover{color:var(--red)}
+.vc-wave{position:relative;height:120px;background:var(--panel2)}
+.vc-wave svg{position:absolute;inset:0;width:100%;height:100%}
+.vc-3d{position:relative;height:120px;background:var(--panel2);overflow:hidden}
+.legend-line{display:flex;gap:10px;font-size:10px;color:var(--fg-dim);padding:5px 12px;flex-wrap:wrap;align-items:center}
+.legend-line .ld{display:flex;align-items:center;gap:4px}
+.legend-line .sw{width:9px;height:3px;border-radius:2px}
+.hint{font-size:11px;color:#565f89;margin-top:8px}
+.empty{color:var(--fg-mut);font-size:12px;text-align:center;padding:24px}
+/* ===== 设置页 ===== */
+.set-grid{display:grid;grid-template-columns:200px 1fr;gap:14px}
+@media(max-width:900px){.set-grid{grid-template-columns:1fr}}
+.set-nav{display:flex;flex-direction:column;gap:4px;align-self:start}
+.set-nav-item{padding:10px 13px;border-radius:6px;font-size:13px;cursor:pointer;color:var(--fg-dim);transition:all .15s}
+.set-nav-item:hover{background:var(--panel);color:var(--fg)}
+.set-nav-item.active{background:rgba(122,162,247,.12);color:var(--accent);font-weight:600}
+.set-body{min-height:260px}
+.set-pane{display:none}
+.set-pane.active{display:block}
+.set-field{margin-bottom:12px}
+.set-field label{margin-bottom:4px}
+.set-field select,.set-field input{max-width:360px}
+.set-row3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+@media(max-width:700px){.set-row3{grid-template-columns:1fr}}
+</style>
+<style data-id="immersive-translate-input-injected-css"></style></head>
+<body>
+
+<!-- ===== 顶部标题栏（对齐原型 host-bar）===== -->
+<div class="appbar">
+  <span class="brand">串口调试助手</span>
+  <span id="status" class="st off">○ 未连接</span>
+  <span class="meta" id="connectionMeta"></span>
+  <span class="meta" id="portsMeta"></span>
+</div>
+
+<!-- ===== 横向标签页（对齐原型 pg-tabs）===== -->
+<div class="pg-tabs">
+  <div class="pg-tab active" data-p="basic"><span class="ico">▣</span>基础</div>
+  <div class="pg-tab" data-p="term"><span class="ico">⌨</span>终端交互</div>
+  <div class="pg-tab" data-p="proto"><span class="ico">≣</span>协议解析</div>
+  <div class="pg-tab" data-p="viz"><span class="ico">∿</span>可视化配置</div>
+  <div class="pg-tab" data-p="set"><span class="ico">⚙</span>设置</div>
+</div>
+
+<div class="main">
+  <div class="content">
+
+    <!-- ============ 01 基础界面 ============ -->
+    <div class="page active" id="pg-basic">
+      <div class="ttl">基础文本界面</div>
+      <div class="sub">收发一体：文本日志 + 完整发送区（HEX / 定时 / 换行 / 发送历史）。</div>
+      <div class="base-grid">
+        <div class="side-col">
+          <div class="w-field"><label>端口</label><select id="port"></select></div>
+          <div class="w-field"><label>波特率</label><select id="baud">
+            <option>9600</option><option>19200</option><option>38400</option>
+            <option selected="">115200</option><option>230400</option><option>460800</option><option>921600</option>
+          </select></div>
+          <div class="w-field"><label>数据位/校验/停止</label><div class="box" id="dps">8 N 1</div></div>
+          <button class="w-btn" id="openBtn">打开串口</button>
+          <button class="w-btn green" id="refreshBtn">刷新端口</button>
+          <button class="w-btn ghost" id="advBtn">高级串口设置</button>
+        </div>
+        <div class="main-col">
+          <div class="statusbar">
+            <span>RX <b id="rxCount">0 B</b></span>
+            <span>TX <b id="txCount">0 B</b></span>
+            <span>RX速率 <b id="rxRate">0 B/s</b></span>
+            <span class="sp"><span class="dot" id="connDot"></span><b id="connText">未连接</b></span>
+          </div>
+          <div class="recv" id="log"></div>
+          <div class="sendbox">
+            <div class="send-row">
+              <span class="prompt">❯</span>
+              <input class="main" id="sendbox" placeholder="输出内容，回车发送" spellcheck="false">
+              <button class="send-btn" id="sendBtn">发送</button>
+            </div>
+            <div class="opt-row">
+              <span class="chk"><input type="radio" name="fmode" id="fAscii" checked="">ASCII</span>
+              <span class="chk"><input type="radio" name="fmode" id="fHex">HEX</span>
+              <span class="chk"><input type="checkbox" id="fNewline" checked="">加换行</span>
+              <span class="chk"><input type="checkbox" id="fTimer">定时</span>
+              <input id="timerMs" value="1000" style="width:70px;padding:4px">
+              <span class="chk"><input type="checkbox" id="fHexDisp">HEX 显示收</span>
+              <span style="margin-left:auto" id="sendHist">发送历史 ▾</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ 02 终端交互 ============ -->
+    <div class="page" id="pg-term">
+      <div class="ttl">终端交互界面</div>
+      <div class="sub">连接交互式设备（Linux shell / 串口命令行），敲命令并回显，与基础界面独立。</div>
+      <div class="statusbar">
+        <span>模式 <b>终端交互</b></span>
+        <span>协议 <b>none（透传）</b></span>
+        <span class="sp"><span class="dot" id="termDot"></span><b id="termConnText">未连接</b></span>
+      </div>
+      <div class="term" id="term"></div>
+      <div class="sendbox">
+        <div class="opt-row" style="margin-top:0">
+          <span class="chk"><input type="checkbox" id="tLocalEcho">本地回显</span>
+          <span class="chk"><input type="checkbox" id="tCrlf" checked="">换行 → CR+LF</span>
+          <span class="chk"><input type="checkbox" id="tPaste">粘贴自动发送</span>
+          <span style="margin-left:auto">上下键 = 命令历史</span>
+        </div>
+        <div class="send-row" style="margin-top:8px">
+          <span class="prompt">$</span>
+          <input class="main" id="termbox" placeholder="输入命令，回车发送" spellcheck="false">
+          <button class="send-btn" id="termsend">发送</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ 03 协议解析 ============ -->
+    <div class="page" id="pg-proto">
+      <div class="ttl">协议解析（协议字段配置）</div>
+      <div class="sub">定义帧结构：每个字段指定名称、类型、长度；可插入 padding 占位；支持字节序。配置结果实时预览帧的字节布局。</div>
+      <div class="proto-grid">
+        <div class="card">
+          <h3>字段列表</h3>
+          <div class="row" style="margin-bottom:10px">
+            <button id="addFieldBtn" class="sec" style="flex:1">+ 新增字段</button>
+            <button id="addPadBtn" class="ghost" style="flex:1">+ Padding</button>
+          </div>
+          <table class="proto-table">
+            <thead><tr><th>名称</th><th>类型</th><th>长度</th><th></th></tr></thead>
+            <tbody id="protoRows"></tbody>
+          </table>
+          <div class="row" style="margin-top:10px">
+            <label style="margin:0">字节序</label>
+            <select id="protoEndian" style="width:auto"><option value="little" selected="">小端</option><option value="big">大端</option></select>
+            <label style="margin:0">协议名</label>
+            <input id="protoName" value="cust" style="width:auto;flex:1">
+            <button id="applySchemaBtn" style="flex-shrink:0">应用协议</button>
+          </div>
+        </div>
+        <div class="card">
+          <h3>帧布局预览</h3>
+          <div class="layoutbar">
+            <div class="layout-main" id="layoutMain"></div>
+            <div class="layout-legend" id="layoutLegend"></div>
+          </div>
+          <div class="hint" style="margin-top:10px">空白布局 = 尚未定义字段。定义字段后此处实时显示每字段占用字节。</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ 04 可视化配置 ============ -->
+    <div class="page" id="pg-viz">
+      <div class="ttl">可视化配置</div>
+      <div class="sub">数据源来自协议字段，勾选数据源 + 选类型 → 新建视图。</div>
+      <div class="viz-grid">
+        <div class="card" style="align-self:start">
+          <h3>数据源（读自协议）</h3>
+          <div class="statusbar" style="margin-bottom:8px"><span>协议 <b id="vizProtoName">—</b></span><span>字节序 <b id="vizEndian">—</b></span></div>
+          <div class="src-list" id="srcList"></div>
+          <div class="vtype-row">
+            <div class="vt active" data-vt="wave">波形<small>Waveform</small></div>
+            <div class="vt" data-vt="3d">3D姿态<small>Attitude</small></div>
+          </div>
+          <button id="addViewBtn" class="sec" style="width:100%;margin-top:10px">新建视图</button>
+          <div class="hint">勾选数据源 + 选类型 → 新建视图</div>
+        </div>
+        <div class="vm-canvas" id="vmCanvas"></div>
+      </div>
+    </div>
+
+    <!-- ============ 05 设置 ============ -->
+    <div class="page" id="pg-set">
+      <div class="ttl">设置</div>
+      <div class="sub">软件设置 / 高级串口设置 / 插件管理，三类配置集中于此。</div>
+      <div class="set-grid">
+        <div class="set-nav card">
+          <div class="set-nav-item active" data-s="soft">软件设置</div>
+          <div class="set-nav-item" data-s="serial">高级串口设置</div>
+          <div class="set-nav-item" data-s="plugin">插件管理</div>
+        </div>
+        <div class="set-body card">
+
+          <!-- 软件设置 -->
+          <div class="set-pane active" id="set-soft">
+            <h3>软件设置</h3>
+            <div class="set-field"><label>主题</label>
+              <select id="setTheme"><option value="system">跟随系统</option><option value="dark">深色（Tokyo Night）</option><option value="light">浅色</option></select></div>
+            <div class="set-field"><label>语言</label>
+              <select id="setLang"><option value="zh">中文</option><option value="en">English</option></select></div>
+            <div class="set-field"><label>启动时自动打开浏览器</label>
+              <select id="setAutoBrowse"><option value="1">是</option><option value="0">否</option></select></div>
+            <div class="set-field"><label>定时发送默认间隔（ms）</label>
+              <input id="setTimerMs" type="number" value="1000"></div>
+            <div class="hint">主题与语言即时生效；持久化保存在本地配置。</div>
+          </div>
+
+          <!-- 高级串口设置（原模态窗，现内联） -->
+          <div class="set-pane" id="set-serial">
+            <h3>高级串口设置</h3>
+            <div class="set-row3">
+              <div class="set-field"><label>数据位</label>
+                <select id="advDataBits"><option>5</option><option>6</option><option>7</option><option selected="">8</option></select></div>
+              <div class="set-field"><label>停止位</label>
+                <select id="advStopBits"><option>1</option><option selected="">1</option><option>2</option></select></div>
+              <div class="set-field"><label>校验</label>
+                <select id="advParity"><option value="none" selected="">None</option><option value="even">Even</option><option value="odd">Odd</option></select></div>
+            </div>
+            <div class="set-field"><label>流控</label>
+              <select id="advFlow"><option value="none" selected="">None</option><option value="rtscts">RTS/CTS</option><option value="xonxoff">XON/XOFF</option></select></div>
+            <div class="set-row" style="margin-top:14px">
+              <button id="advApply" class="sec">应用并打开串口</button>
+              <button id="advReset" class="ghost">恢复默认</button>
+              <span class="hint" style="margin-left:auto">仅对下次打开串口生效</span>
+            </div>
+          </div>
+
+          <!-- 插件管理 -->
+          <div class="set-pane" id="set-plugin">
+            <h3>插件管理</h3>
+            <div class="empty" style="padding:18px">插件系统规划中：将支持扩展协议解析、数据可视化、导出等能力。</div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+"use strict";
+var ws = new WebSocket('ws://'+location.host);
+var SVC = {
+  port: document.getElementById('port'),
+  baud: document.getElementById('baud'),
+  log: document.getElementById('log'),
+  term: document.getElementById('term'),
+  status: document.getElementById('status'),
+  connDot: document.getElementById('connDot'),
+  connText: document.getElementById('connText'),
+  termDot: document.getElementById('termDot'),
+  termConnText: document.getElementById('termConnText'),
+  rxCount: document.getElementById('rxCount'),
+  txCount: document.getElementById('txCount'),
+  rxRate: document.getElementById('rxRate'),
+  txBytes: 0, rxBytes: 0, lastRateT: Date.now(), lastRateRx: 0,
+  sendbox: document.getElementById('sendbox'),
+  termbox: document.getElementById('termbox'),
+  protoRows: document.getElementById('protoRows'),
+  srcList: document.getElementById('srcList'),
+  vmCanvas: document.getElementById('vmCanvas'),
+  fields: [],          // 协议字段定义
+  checkFields: {},     // 数据源勾选
+  views: [],           // 视图实例
+  viewSeq: 0,
+  waveBuf: {},         // dataSource -> [points]
+  hist: [],
+  termHist: [], termPos: -1
+};
+// 颜色板
+var PALETTE = ['#7aa2f7','#9ece6a','#e0af68','#f7768e','#bb9af7','#2ac3de','#73daca','#ff9e64'];
+
+function addLog(el, text, cls){
+  var d=document.createElement('div');
+  if(cls) d.className=cls;
+  d.textContent=text;
+  el.appendChild(d);
+  el.scrollTop=el.scrollHeight;
+}
+function fmtBytes(n){
+  if(n>=1048576) return (n/1048576).toFixed(2)+' MB';
+  if(n>=1024) return (n/1024).toFixed(1)+' KB';
+  return n+' B';
+}
+function ts(){ var d=new Date(); function p(x){return (x<10?'0':'')+x;}
+  return '['+p(d.getHours())+':'+p(d.getMinutes())+':'+p(d.getSeconds())+'.'+String(d.getMilliseconds()).padStart(3,'0')+']'; }
+
+// ===== WebSocket 消息 =====
+ws.onmessage = function(e){
+  var m = JSON.parse(e.data);
+  if(m.type==='rx'){
+    var hexDisp = document.getElementById('fHexDisp').checked;
+    var text = hexDisp ? bytesToHex(m.bytes||[]) : m.data;
+    var t = ts();
+    addLog(SVC.log, t+'  '+text, 'rxline');
+    addLog(SVC.term, text, 'o');
+    SVC.rxBytes += (m.bytes?m.bytes.length:0);
+    updateCounters();
+    // 波形数据累积
+    if(m.bytes){ for(var i=0;i<m.bytes.length;i++){ var v=m.bytes[i]; pushWave('__raw', v); } }
+    if(m.fields){ updateFieldsUi?.(m.fields); }
+  }
+  if(m.type==='frame'){
+    var line = '── frame #'+m.seq+' ['+m.name+']';
+    addLog(SVC.log, line, 'out');
+    if(m.numeric){ for(var k in m.numeric){ addLog(SVC.log, '    '+k+' = '+m.numeric[k], 'raw'); } }
+    if(m.text){ for(var k2 in m.text){ addLog(SVC.log, '    '+k2+' = '+m.text[k2], 'raw'); } }
+    // 更新数据源值并推送波形
+    if(m.numeric){ for(var f in m.numeric){ pushWave(f, Number(m.numeric[f])); } }
+  }
+  if(m.type==='status'){
+    SVC.status.innerHTML = (m.open?'● 已连接':'○ 未连接');
+    SVC.status.className = 'st'+(m.open?'':' off');
+    SVC.connDot.className='dot'+(m.open?' on':'');
+    SVC.connText.textContent = m.open?'已连接':'未连接';
+    SVC.termDot.className='dot'+(m.open?' on':'');
+    SVC.termConnText.textContent = m.open?'已连接':'未连接';
+    document.getElementById('openBtn').textContent = m.open?'关闭串口':'打开串口';
+  }
+  if(m.type==='ports'){
+    SVC.port.innerHTML='';
+    (m.ports||[]).forEach(function(x){ var o=document.createElement('option'); o.text=x; SVC.port.add(o); });
+    if(m.ports && m.ports.length) document.getElementById('portsMeta').textContent = m.ports.length+' 个端口';
+  }
+  if(m.type==='proto'){
+    SVC.fields = m.fields||[];
+    renderProtoTable();
+    renderLayout();
+    renderSources();
+  }
+  if(m.type==='schema'){
+    document.getElementById('vizProtoName').textContent = m.name||'cust';
+    document.getElementById('vizEndian').textContent = m.endian||'小端';
+    renderSources();
+  }
+};
+ws.onopen = function(){ ws.send(JSON.stringify({cmd:'list'})); ws.send(JSON.stringify({cmd:'getproto'})); };
+
+function bytesToHex(arr){
+  var s=''; for(var i=0;i<arr.length;i++){ s+=(arr[i]<16?'0':'')+arr[i].toString(16).toUpperCase()+' '; } return s.trim();
+}
+
+// ===== 计数器/速率 =====
+function updateCounters(){
+  SVC.rxCount.textContent = fmtBytes(SVC.rxBytes);
+  SVC.txCount.textContent = fmtBytes(SVC.txBytes);
+  var now=Date.now();
+  if(now-SVC.lastRateT>=1000){
+    var rb=SVC.rxBytes-SVC.lastRateRx;
+    SVC.rxRate.textContent = fmtBytes(rb)+'/s';
+    SVC.lastRateT=now; SVC.lastRateRx=SVC.rxBytes;
+  }
+}
+
+// ===== 基础页事件 =====
+document.getElementById('openBtn').onclick=function(){
+  if(this.textContent==='打开串口'){
+    ws.send(JSON.stringify({cmd:'open',port:SVC.port.value,baud:parseInt(SVC.baud.value)}));
+  } else {
+    ws.send(JSON.stringify({cmd:'close'}));
+  }
+};
+document.getElementById('refreshBtn').onclick=function(){ ws.send(JSON.stringify({cmd:'list'})); };
+document.getElementById('advBtn').onclick=function(){ switchPage('set'); setSub('serial'); };
+function sendFromBox(){
+  var v=SVC.sendbox.value; if(!v) return;
+  var hex=document.getElementById('fHex').checked;
+  var nl=document.getElementById('fNewline').checked;
+  ws.send(JSON.stringify({cmd:'send',data:v,hex:hex,newline:nl}));
+  var t=ts();
+  addLog(SVC.log, t+'  → 发送: '+(hex?'[HEX] '+v:v), 'txline');
+  SVC.txBytes += hex ? (v.replace(/ /g,'').length/2) : v.length;
+  updateCounters();
+  SVC.hist.unshift(v); if(SVC.hist.length>50) SVC.hist.pop();
+  SVC.sendbox.value='';
+}
+document.getElementById('sendBtn').onclick=sendFromBox;
+SVC.sendbox.onkeydown=function(e){ if(e.key==='Enter') sendFromBox(); };
+
+// 定时发送
+var timerHandle=null;
+document.getElementById('fTimer').addEventListener('change',function(){
+  if(this.checked){
+    var ms=parseInt(document.getElementById('timerMs').value)||1000;
+    timerHandle=setInterval(sendFromBox, ms);
+  } else { if(timerHandle) clearInterval(timerHandle); timerHandle=null; }
+});
+
+// ===== 终端页事件 =====
+function termSend(){
+  var v=SVC.termbox.value; if(!v) return;
+  var crlf=document.getElementById('tCrlf').checked;
+  var le=document.getElementById('tLocalEcho').checked;
+  ws.send(JSON.stringify({cmd:'send',data:v,hex:false,newline:crlf}));
+  if(le) addLog(SVC.term, '$ '+v, 'o');
+  SVC.termHist.unshift(v); if(SVC.termHist.length>50) SVC.termHist.pop(); SVC.termPos=-1;
+  SVC.termbox.value='';
+}
+document.getElementById('termsend').onclick=termSend;
+SVC.termbox.onkeydown=function(e){
+  if(e.key==='Enter'){ termSend(); }
+  else if(e.key==='ArrowUp'){ e.preventDefault(); if(SVC.termPos<SVC.termHist.length-1){ SVC.termPos++; SVC.termbox.value=SVC.termHist[SVC.termPos]; } }
+  else if(e.key==='ArrowDown'){ e.preventDefault(); if(SVC.termPos>0){ SVC.termPos--; SVC.termbox.value=SVC.termHist[SVC.termPos]; } else { SVC.termPos=-1; SVC.termbox.value=''; } }
+};
+document.getElementById('tPaste').addEventListener('change',function(){
+  if(this.checked){ SVC.termbox.onpaste=function(e){ e.preventDefault(); termSend(); }; }
+  else { SVC.termbox.onpaste=null; }
+});
+
+// ===== 导航（顶部横向标签页 pg-tab）=====
+function switchPage(p){
+  document.querySelectorAll('.pg-tab').forEach(function(x){ x.classList.remove('active'); });
+  document.querySelectorAll('.page').forEach(function(x){ x.classList.remove('active'); });
+  var tab=document.querySelector('.pg-tab[data-p="'+p+'"]');
+  if(tab) tab.classList.add('active');
+  var page=document.getElementById('pg-'+p);
+  if(page) page.classList.add('active');
+}
+document.querySelectorAll('.pg-tab').forEach(function(n){
+  n.addEventListener('click',function(){ switchPage(this.getAttribute('data-p')); });
+});
+
+// ===== 设置页：三分类切换 =====
+function setSub(k){
+  document.querySelectorAll('.set-nav-item').forEach(function(x){ x.classList.remove('active'); });
+  document.querySelectorAll('.set-pane').forEach(function(x){ x.classList.remove('active'); });
+  var nav=document.querySelector('.set-nav-item[data-s="'+k+'"]');
+  var pane=document.getElementById('set-'+k);
+  if(nav) nav.classList.add('active');
+  if(pane) pane.classList.add('active');
+}
+document.querySelectorAll('.set-nav-item').forEach(function(n){
+  n.addEventListener('click',function(){ setSub(this.getAttribute('data-s')); });
+});
+function sendSettings(){
+  ws.send(JSON.stringify({cmd:'setsettings',theme:document.getElementById('setTheme').value,
+    lang:document.getElementById('setLang').value,
+    autobrowse:document.getElementById('setAutoBrowse').value==='1',
+    timerMs:parseInt(document.getElementById('setTimerMs').value)||1000,
+    dataBits:parseInt(document.getElementById('advDataBits').value)||8,
+    stopBits:parseInt(document.getElementById('advStopBits').value)||1,
+    parity:document.getElementById('advParity').value,
+    flow:document.getElementById('advFlow').value}));
+}
+['setTheme','setLang','setAutoBrowse','setTimerMs','advDataBits','advStopBits','advParity','advFlow'].forEach(function(id){
+  document.getElementById(id).addEventListener('change', sendSettings);
+});
+document.getElementById('advApply').onclick=function(){
+  sendSettings();
+  ws.send(JSON.stringify({cmd:'open',port:SVC.port.value,baud:parseInt(SVC.baud.value)}));
+};
+document.getElementById('advReset').onclick=function(){
+  document.getElementById('advDataBits').value='8';
+  document.getElementById('advStopBits').value='1';
+  document.getElementById('advParity').value='none';
+  document.getElementById('advFlow').value='none';
+  sendSettings();
+};
+
+// ===== 协议页 =====
+var TYPE_OPTS=['u8','u16','u32','i8','i16','i32','float','double','bool'];
+function renderProtoTable(){
+  var tb=SVC.protoRows; tb.innerHTML='';
+  if(!SVC.fields.length){ tb.innerHTML='<tr><td colspan="4" class="empty">尚未定义字段</td></tr>'; return; }
+  SVC.fields.forEach(function(f,i){
+    var tr=document.createElement('tr');
+    if(f.pad) tr.className='pad';
+    var tdName=document.createElement('td');
+    var inpName=document.createElement('input'); inpName.value=f.name; inpName.disabled=!!f.pad;
+    inpName.onchange=function(){ SVC.fields[i].name=this.value; sendProto(); };
+    tdName.appendChild(inpName);
+    var tdType=document.createElement('td');
+    if(f.pad){ tdType.innerHTML='<span class="ttype">pad</span>'; }
+    else {
+      var sel=document.createElement('select');
+      TYPE_OPTS.forEach(function(t){ var o=document.createElement('option'); o.text=t; o.value=t; if(f.type===t) o.selected=true; sel.appendChild(o); });
+      sel.onchange=function(){ SVC.fields[i].type=this.value; SVC.fields[i].len=typeLen(this.value); sendProto(); };
+      tdType.appendChild(sel);
+    }
+    var tdLen=document.createElement('td');
+    var inpLen=document.createElement('input'); inpLen.type='number'; inpLen.value=f.len||0; inpLen.style.width='60px';
+    inpLen.onchange=function(){ SVC.fields[i].len=parseInt(this.value)||1; sendProto(); };
+    tdLen.appendChild(inpLen);
+    var tdDel=document.createElement('td');
+    var del=document.createElement('span'); del.className='del'; del.textContent='✕';
+    del.onclick=function(){ SVC.fields.splice(i,1); sendProto(); };
+    tdDel.appendChild(del);
+    tr.appendChild(tdName); tr.appendChild(tdType); tr.appendChild(tdLen); tr.appendChild(tdDel);
+    tb.appendChild(tr);
+  });
+}
+function typeLen(t){
+  return {u8:1,u16:2,u32:4,i8:1,i16:2,i32:4,float:4,double:8,bool:1}[t]||1;
+}
+document.getElementById('addFieldBtn').onclick=function(){
+  SVC.fields.push({name:'field'+(SVC.fields.length+1),type:'u16',len:2,pad:false});
+  renderProtoTable(); renderLayout(); renderSources();
+  sendProto();
+};
+document.getElementById('addPadBtn').onclick=function(){
+  SVC.fields.push({name:'padding',type:'pad',len:1,pad:true});
+  renderProtoTable(); renderLayout(); renderSources();
+  sendProto();
+};
+function delField(i){ SVC.fields.splice(i,1); renderProtoTable(); renderLayout(); renderSources(); sendProto(); }
+document.getElementById('applySchemaBtn').onclick=function(){
+  var name=document.getElementById('protoName').value||'cust';
+  var endian=document.getElementById('protoEndian').value;
+  ws.send(JSON.stringify({cmd:'applyproto',name:name,endian:endian}));
+};
+document.getElementById('protoEndian').onchange=sendProto;
+function sendProto(){
+  var endian=document.getElementById('protoEndian').value;
+  ws.send(JSON.stringify({cmd:'setproto',fields:SVC.fields,endian:endian}));
+}
+
+// ===== 帧布局预览 =====
+var SEG_COLORS=['#7aa2f7','#9ece6a','#e0af68','#f7768e','#bb9af7','#2ac3de','#73daca','#ff9e64'];
+function renderLayout(){
+  var lm=document.getElementById('layoutMain'), lg=document.getElementById('layoutLegend');
+  lm.innerHTML=''; lg.innerHTML='';
+  if(!SVC.fields.length){ lm.innerHTML='<div class="empty" style="padding:0;line-height:30px">— 空 —</div>'; return; }
+  var total=0; SVC.fields.forEach(function(f){ total += (f.len||1); });
+  SVC.fields.forEach(function(f,idx){
+    var w=Math.max((f.len||1)/total*100, 2);
+    var seg=document.createElement('div');
+    seg.className='seg'; seg.style.width=w+'%'; seg.style.background=SEG_COLORS[idx%SEG_COLORS.length];
+    seg.textContent=(f.pad?'pad':'')+f.name;
+    seg.title=(f.pad?'pad':'')+f.name+' · '+((f.len||1))+' B';
+    lm.appendChild(seg);
+    var ld=document.createElement('span'); ld.className='ld';
+    ld.innerHTML='<span class="sw" style="background:'+SEG_COLORS[idx%SEG_COLORS.length]+'"></span>'+f.name+' · '+((f.len||1))+'B';
+    lg.appendChild(ld);
+  });
+}
+
+// ===== 可视化页 =====
+var vizType='wave';
+document.querySelectorAll('.vtype-row .vt').forEach(function(v){
+  v.onclick=function(){
+    document.querySelectorAll('.vtype-row .vt').forEach(function(x){ x.classList.remove('active'); });
+    this.classList.add('active'); vizType=this.getAttribute('data-vt');
+  };
+});
+function renderSources(){
+  var sl=SVC.srcList; sl.innerHTML='';
+  if(!SVC.fields.length){ sl.innerHTML='<div class="empty">尚未定义协议字段。请先在「协议解析」页定义。</div>'; return; }
+  SVC.fields.forEach(function(f,i){
+    var item=document.createElement('div');
+    item.className='src-item'+(SVC.checkFields[f.name]?' on':'');
+    var checked=SVC.checkFields[f.name]?'<span class="sel"></span>':'<span class="sel"></span>';
+    item.innerHTML='<span class="sname">'+f.name+'</span><span class="stype">'+(f.pad?'pad':f.type)+'</span><span class="chk"><span class="sel"></span></span>';
+    if(f.pad){ item.style.opacity=.4; }
+    else {
+      item.onclick=function(){ SVC.checkFields[f.name]=!SVC.checkFields[f.name]; renderSources(); };
+    }
+    sl.appendChild(item);
+  });
+}
+document.getElementById('addViewBtn').onclick=function(){
+  var sel=[]; for(var k in SVC.checkFields){ if(SVC.checkFields[k]) sel.push(k); }
+  if(!sel.length){ alert('请先勾选至少一个数据源'); return; }
+  SVC.viewSeq++;
+  var title='视图'+String.fromCharCode(64+SVC.viewSeq)+' · '+(vizType==='wave'?'波形':'3D姿态');
+  var vi={id:'v'+SVC.viewSeq, type:vizType, fields:sel.slice(), title:title};
+  SVC.views.push(vi);
+  sel.forEach(function(f){ if(!SVC.waveBuf[f]) SVC.waveBuf[f]=[]; });
+  renderViews();
+};
+function pushWave(source, v){
+  if(!SVC.waveBuf[source]) SVC.waveBuf[source]=[];
+  var b=SVC.waveBuf[source]; b.push(Number(v)); if(b.length>400) b.shift();
+  renderViews();
+}
+function renderViews(){
+  var cv=SVC.vmCanvas; cv.innerHTML='';
+  if(!SVC.views.length){ cv.innerHTML='<div class="card"><div class="empty">尚未创建视图。左侧勾选数据源 + 选类型 → 新建视图。</div></div>'; return; }
+  SVC.views.forEach(function(vi, vIdx){
+    var card=document.createElement('div'); card.className='view-card';
+    var head=document.createElement('div'); head.className='vc-head';
+    var t=document.createElement('span'); t.className='vc-title'; t.textContent=vi.title;
+    var ch=document.createElement('span'); ch.className='vc-ch'; ch.textContent='数据源: '+vi.fields.join(' + ');
+    var clk=document.createElement('span'); clk.className='clk'; clk.textContent='✕';
+    clk.onclick=function(){ SVC.views.splice(vIdx,1); renderViews(); };
+    head.appendChild(t); head.appendChild(ch); head.appendChild(clk);
+    card.appendChild(head);
+    if(vi.type==='wave'){
+      var bw=document.createElement('div'); bw.className='vc-wave';
+      bw.appendChild(drawWaveSVG(vi.fields));
+      card.appendChild(bw);
+      var lg=document.createElement('div'); lg.className='legend-line';
+      vi.fields.forEach(function(f,i){
+        var ld=document.createElement('span'); ld.className='ld';
+        ld.innerHTML='<span class="sw" style="background:'+PALETTE[(vIdx*3+i)%PALETTE.length]+'"></span>'+f;
+        lg.appendChild(ld);
+      });
+      var r=document.createElement('span'); r.style.marginLeft='auto'; r.textContent='波形 · '+(vi.fields.length>1?'多数据源':'单数据源');
+      lg.appendChild(r);
+      card.appendChild(lg);
+    } else {
+      var td=document.createElement('div'); td.className='vc-3d';
+      td.appendChild(draw3DSVG());
+      card.appendChild(td);
+      var lg3=document.createElement('div'); lg3.className='legend-line';
+      vi.fields.forEach(function(f,i){
+        var ld=document.createElement('span'); ld.className='ld';
+        ld.innerHTML='<span class="sw" style="background:'+PALETTE[i%PALETTE.length]+'"></span>'+f;
+        lg3.appendChild(ld);
+      });
+      var r3=document.createElement('span'); r3.style.marginLeft='auto'; r3.textContent='3D姿态 · 互斥类型';
+      lg3.appendChild(r3);
+      card.appendChild(lg3);
+    }
+    cv.appendChild(card);
+  });
+}
+function drawWaveSVG(fields){
+  var W=600,H=120;
+  var svg='<svg viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="none">';
+  // 网格
+  svg+='<defs><pattern id="grid'+Math.floor(Math.random()*1e6)+'" width="'+(W/12)+'" height="'+(H/4)+'" patternUnits="userSpaceOnUse"><path d="M '+(W/12)+' 0 L 0 0 0 '+(H/4)+'" fill="none" stroke="rgba(122,162,247,.08)" stroke-width="1"/></pattern></defs>';
+  svg+='<rect width="'+W+'" height="'+H+'" fill="url(#grid'+Math.floor(Math.random()*1e6)+')"/>';
+  fields.forEach(function(f,fi){
+    var buf=SVC.waveBuf[f]||[];
+    if(!buf.length) return;
+    var pts=[];
+    var min=0,max=255;
+    for(var i=0;i<buf.length;i++){ if(buf[i]<min)min=buf[i]; if(buf[i]>max)max=buf[i]; }
+    var span=(max-min)||1;
+    for(var i=0;i<buf.length;i++){
+      var x=(i/(buf.length-1))*W;
+      var y=H-((buf[i]-min)/span)*(H-10)-5;
+      pts.push(x.toFixed(1)+','+y.toFixed(1));
+    }
+    svg+='<polyline points="'+pts.join(' ')+'" fill="none" stroke="'+PALETTE[(fi)%PALETTE.length]+'" stroke-width="1.8" stroke-linejoin="round"/>';
+  });
+  svg+='</svg>';
+  return createSVG(svg);
+}
+function draw3DSVG(){
+  var W=600,H=120,cx=W/2,cy=H/2,s=30;
+  var t=Date.now()/600;
+  var rx=t%6.283, ry=t%3.141;
+  var corners=[[-1,-1,-1],[1,-1,-1],[1,1,-1],[-1,1,-1],[-1,-1,1],[1,-1,1],[1,1,1],[-1,1,1]];
+  var edges=[[0,1],[1,2],[2,3],[3,0],[4,5],[5,6],[6,7],[7,4],[0,4],[1,5],[2,6],[3,7]];
+  function rot(p){
+    var x=p[0],y=p[1],z=p[2];
+    var y1=y*Math.cos(rx)-z*Math.sin(rx); var z1=y*Math.sin(rx)+z*Math.cos(rx);
+    var x2=x*Math.cos(ry)+z1*Math.sin(ry); var z2=-x*Math.sin(ry)+z1*Math.cos(ry);
+    return [x2,y1,z2];
+  }
+  var proj=corners.map(function(c){ var r=rot(c); return [cx+r[0]*s, cy+r[1]*s]; });
+  var svg='<svg viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="none">';
+  edges.forEach(function(e){
+    var a=proj[e[0]], b=proj[e[1]];
+    svg+='<line x1="'+a[0].toFixed(1)+'" y1="'+a[1].toFixed(1)+'" x2="'+b[0].toFixed(1)+'" y2="'+b[1].toFixed(1)+'" stroke="#7aa2f7" stroke-width="1.6" stroke-linecap="round"/>';
+  });
+  svg+='</svg>';
+  return createSVG(svg);
+}
+function createSVG(svgStr){
+  var div=document.createElement('div');
+  div.innerHTML=svgStr;
+  return div.firstChild;
+}
+
+// 渲染初始
+renderSources();
+</script>
+
+</body></html>

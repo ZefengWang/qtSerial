@@ -3,5 +3,6 @@
         <file alias="logo">icon/serial-debug.png</file>
         <file>styles/dark.qss</file>
         <file>styles/light.qss</file>
+        <file alias="web/index.html">src/launcher/web/index.html</file>
     </qresource>
 </RCC>

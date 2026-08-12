@@ -17,10 +17,13 @@
 // 后端推送： {"type":"rx","data":"..."}  {"type":"status","open":bool}
 // ============================================================
 #include "core/PortConfig.hpp"
+#include "core/FieldSchema.hpp"
+#include "core/Frame.hpp"
 #include "ui/SerialWorker.hpp"
 #include "launcher/UiMode.hpp"
 
 #include <QCoreApplication>
+#include <QFile>
 #include <QTcpServer>
 #include <QTcpSocket>
 #include <QHostAddress>
@@ -44,7 +47,11 @@
 namespace {
 
 // 自动打开系统默认浏览器（延迟到事件循环起来后执行）。
+// 无图形环境（无头服务器/沙箱）下不打开，避免 QDesktopServices 崩溃。
 void openBrowserLater(int port) {
+    bool hasGui = !qEnvironmentVariableIsEmpty("DISPLAY")
+               || !qEnvironmentVariableIsEmpty("WAYLAND_DISPLAY");
+    if (!hasGui) return;
     QTimer::singleShot(0, [port]() {
         QDesktopServices::openUrl(QUrl(QStringLiteral("http://localhost:%1").arg(port)));
     });
@@ -55,6 +62,79 @@ SerialWorker* g_web_worker = nullptr;
 QTcpServer*  g_web_server = nullptr;
 QSet<QTcpSocket*> g_web_clients;
 QHash<QTcpSocket*, QByteArray> g_web_buf;
+
+// 协议编辑状态（前端编辑、apply 前暂存）。
+std::vector<sd::FieldDesc> g_web_fields;
+QString g_web_endian = "little";
+QString g_web_protoName = "cust";
+
+// 设置页状态（软件设置 / 高级串口设置）
+QString g_web_theme = "dark";
+QString g_web_lang  = "zh";
+bool    g_web_autoBrowse = true;
+int     g_web_timerMs   = 1000;
+int     g_web_dataBits  = 8;
+int     g_web_stopBits  = 1;
+QString g_web_parity = "none";
+QString g_web_flow   = "none";
+
+sd::FieldType webFieldTypeFromString(const QString &s) {
+    const QString v = s.toLower();
+    if (v == "u8") return sd::FieldType::U8;
+    if (v == "u16") return sd::FieldType::U16;
+    if (v == "u32") return sd::FieldType::U32;
+    if (v == "i8") return sd::FieldType::I8;
+    if (v == "i16") return sd::FieldType::I16;
+    if (v == "i32") return sd::FieldType::I32;
+    if (v == "float") return sd::FieldType::F32;
+    if (v == "double") return sd::FieldType::F64;
+    if (v == "bool") return sd::FieldType::Bool;
+    return sd::FieldType::F32;
+}
+QString webFieldTypeToString(sd::FieldType t) {
+    switch (t) {
+        case sd::FieldType::U8: return "u8";
+        case sd::FieldType::U16: return "u16";
+        case sd::FieldType::U32: return "u32";
+        case sd::FieldType::I8: return "i8";
+        case sd::FieldType::I16: return "i16";
+        case sd::FieldType::I32: return "i32";
+        case sd::FieldType::F32: return "float";
+        case sd::FieldType::F64: return "double";
+        case sd::FieldType::Bool: return "bool";
+    }
+    return "float";
+}
+std::vector<sd::FieldDesc> jsonToFields(const QJsonArray &arr) {
+    std::vector<sd::FieldDesc> out;
+    for (const auto &v : arr) {
+        QJsonObject o = v.toObject();
+        sd::FieldDesc f;
+        f.name = o.value("name").toString().toStdString();
+        f.isPadding = o.value("pad").toBool(false);
+        if (f.isPadding) {
+            f.byteLength = o.value("len").toInt(1);
+        } else {
+            f.type = webFieldTypeFromString(o.value("type").toString());
+            f.byteLength = o.value("len").toInt();
+            if (f.byteLength <= 0) f.byteLength = sd::fieldTypeBytes(f.type);
+        }
+        out.push_back(f);
+    }
+    return out;
+}
+QJsonArray fieldsToJson(const std::vector<sd::FieldDesc> &fields) {
+    QJsonArray arr;
+    for (const auto &f : fields) {
+        QJsonObject o;
+        o["name"] = QString::fromStdString(f.name);
+        o["pad"] = f.isPadding;
+        if (f.isPadding) o["len"] = f.byteLength;
+        else { o["type"] = webFieldTypeToString(f.type); o["len"] = f.byteLength; }
+        arr.append(o);
+    }
+    return arr;
+}
 
 QByteArray wsFrame(const QByteArray &payload) {
     QByteArray frame;
@@ -75,7 +155,9 @@ QByteArray wsFrame(const QByteArray &payload) {
 }
 
 void wsSend(QTcpSocket *s, const QJsonObject &obj) {
+    if (!s || s->state() != QAbstractSocket::ConnectedState) return;
     s->write(wsFrame(QJsonDocument(obj).toJson(QJsonDocument::Compact)));
+    s->flush();
 }
 
 QByteArray wsTryParse(QByteArray &buf, bool *complete) {
@@ -120,121 +202,13 @@ QByteArray wsTryParse(QByteArray &buf, bool *complete) {
 }
 
 void serveIndex(QTcpSocket *s) {
-    QByteArray html =
-        "<!DOCTYPE html><html lang='zh-CN'><head><meta charset='utf-8'>"
-        "<meta name='viewport' content='width=device-width,initial-scale=1'>"
-        "<title>Serial Debug Assistant · Web</title>"
-        "<style>"
-        "*{box-sizing:border-box;margin:0;padding:0}"
-        "body{font-family:system-ui,-apple-system,'PingFang SC',sans-serif;background:#16161e;color:#c0caf5;height:100vh;display:flex;overflow:hidden}"
-        ".side{width:170px;background:#1a1b26;padding:14px 10px;display:flex;flex-direction:column;gap:4px;flex-shrink:0}"
-        ".brand{font-size:14px;font-weight:700;color:#7aa2f7;padding:6px 10px 14px;border-bottom:1px solid #2a2c3a;margin-bottom:10px}"
-        ".nav{display:flex;align-items:center;gap:8px;padding:9px 12px;border-radius:6px;cursor:pointer;font-size:13px;color:#9aa5ce;transition:all .15s}"
-        ".nav:hover{background:#24283b;color:#c0caf5}"
-        ".nav.active{background:#7aa2f7;color:#1a1b26;font-weight:600}"
-        ".main{flex:1;display:flex;flex-direction:column;overflow:hidden}"
-        ".topbar{height:50px;background:#24283b;display:flex;align-items:center;gap:12px;padding:0 18px;border-bottom:1px solid #2a2c3a;flex-shrink:0}"
-        ".topbar .st{font-size:12px;color:#9ece6a}.topbar .st.off{color:#565f89}"
-        ".content{flex:1;overflow-y:auto;padding:18px}"
-        ".card{background:#24283b;border-radius:10px;padding:16px;margin-bottom:14px}"
-        ".card h3{font-size:13px;color:#7aa2f7;margin-bottom:12px;font-weight:600}"
-        "label{font-size:12px;opacity:.7;display:block;margin-bottom:4px}"
-        "select,input{background:#1a1b26;color:#c0caf5;border:1px solid #3a3f5a;border-radius:6px;padding:8px;font-size:13px;width:100%}"
-        ".row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}"
-        ".row>select{flex:1;min-width:140px}.row>input{flex:1;min-width:90px}"
-        "button{background:#7aa2f7;color:#1a1b26;border:none;border-radius:6px;padding:9px 16px;cursor:pointer;font-weight:600;font-size:13px}"
-        "button.sec{background:#9ece6a}button.warn{background:#e0af68}button.danger{background:#f7768e}"
-        "button:disabled{opacity:.4;cursor:not-allowed}"
-        "#log{background:#12121a;border-radius:8px;padding:10px;height:300px;overflow:auto;font-family:ui-monospace,'JetBrains Mono',monospace;font-size:12px;white-space:pre-wrap;line-height:1.6}"
-        "#term{background:#12121a;border-radius:8px;padding:10px;height:300px;overflow:auto;font-family:ui-monospace,monospace;font-size:12px;white-space:pre-wrap;line-height:1.6;color:#9ece6a}"
-        "#termbox{background:#1a1b26;border:1px solid #3a3f5a;border-radius:6px;padding:9px;color:#c0caf5;font-family:monospace;font-size:13px;flex:1}"
-        ".page{display:none}.page.active{display:block}"
-        "#viz{background:#12121a;border-radius:8px;padding:10px;height:300px;overflow:auto;font-family:monospace;font-size:11px;white-space:pre;line-height:1.3;color:#7aa2f7}"
-        ".proto table{width:100%;border-collapse:collapse;font-size:12px}"
-        ".proto td{border-bottom:1px solid #2a2c3a;padding:7px 8px;color:#c0caf5}"
-        ".proto th{text-align:left;color:#7aa2f7;padding:7px 8px;font-size:12px;border-bottom:1px solid #3a3f5a}"
-        ".pill{display:inline-block;background:#1a1b26;border:1px solid #3a3f5a;border-radius:12px;padding:3px 12px;font-size:12px;margin:0 6px 6px 0;cursor:pointer}"
-        ".pill.on{background:#7aa2f7;color:#1a1b26;border-color:#7aa2f7}"
-        ".hint{font-size:11px;color:#565f89;margin-top:8px}"
-        "</style></head><body>"
-        "<div class='side'>"
-        "<div class='brand'>Serial Debug</div>"
-        "<div class='nav active' data-p='basic'>▣ &nbsp;基础</div>"
-        "<div class='nav' data-p='term'>⌨ &nbsp;终端交互</div>"
-        "<div class='nav' data-p='proto'>≣ &nbsp;协议解析</div>"
-        "<div class='nav' data-p='viz'>∿ &nbsp;可视化</div>"
-        "</div>"
-        "<div class='main'>"
-        "<div class='topbar'><span style='font-weight:600;font-size:14px'>串口调试助手</span>"
-        "<span id='status' class='st off'>未连接</span>"
-        "<span style='margin-left:auto;font-size:12px;color:#565f89'>WebSocket 实时</span></div>"
-        "<div class='content'>"
-        "<div class='page active' id='pg-basic'>"
-        "<div class='card'><h3>串口配置</h3><div class='row'>"
-        "<select id='port'></select><input id='baud' value='115200'>"
-        "<button id='open'>打开</button><button id='close' class='sec'>关闭</button></div></div>"
-        "<div class='card'><h3>发送</h3><div class='row'>"
-        "<input id='sendbox' placeholder='输入内容，回车发送'><button id='send'>发送</button>"
-        "<label style='display:flex;align-items:center;gap:6px;margin:0'>"
-        "<input type='checkbox' id='hex' style='width:auto'> HEX</label></div></div>"
-        "<div class='card'><h3>接收</h3><div id='log'></div></div>"
-        "</div>"
-        "<div class='page' id='pg-term'>"
-        "<div class='card'><h3>终端交互（敲命令并回显）</h3><div id='term'></div>"
-        "<div class='row' style='margin-top:10px'><input id='termbox' placeholder='输入命令，回车发送'><button id='termsend'>发送</button></div>"
-        "<div class='hint'>连接交互式设备（如 Linux shell / 串口命令行），原始字节透传。需先在上方打开串口。</div></div>"
-        "</div>"
-        "<div class='page' id='pg-proto'>"
-        "<div class='card'><h3>协议字段配置</h3>"
-        "<div id='protoFields'><div class='hint'>接收一帧后自动显示解析的字段名/类型/长度/值。</div></div>"
-        "<div class='proto'><table><tr><th>字段</th><th>类型</th><th>长度</th><th>值</th></tr><tbody id='protoRows'></tbody></table></div>"
-        "</div>"
-        "</div>"
-        "<div class='page' id='pg-viz'>"
-        "<div class='card'><h3>波形可视化（字符画）</h3>"
-        "<div class='row'><span class='pill on' id='vizWave'>波形</span><span class='pill' id='viz3d'>3D 姿态</span></div>"
-        "<div id='viz'></div><div class='hint'>实时绘制接收数据的波形（发送数值数据观察变化）。</div></div>"
-        "</div>"
-        "</div></div>"
-        "<script>"
-        "var ws=new WebSocket('ws://'+location.host);"
-        "var log=document.getElementById('log'),term=document.getElementById('term'),viz=document.getElementById('viz');"
-        "function add(el,t){el.textContent+=t+'\\n';el.scrollTop=el.scrollHeight;}"
-        "var vizKind='wave',vizBuf=[];"
-        "ws.onmessage=function(e){var m=JSON.parse(e.data);"
-        "if(m.type==='rx'){var d=m.data;add(log,'[RX] '+d);add(term,d);"
-        "if(vizKind==='wave'){for(var i=0;i<m.bytes.length;i++)vizBuf.push(m.bytes[i]);if(vizBuf.length>200)vizBuf.shift();drawViz();}"
-        "if(vizKind==='3d'){draw3d();}}"
-        "if(m.type==='status'){var st=document.getElementById('status');st.textContent=m.open?'已连接':'未连接';st.className='st'+(m.open?'':' off');}"
-        "if(m.type==='ports'){var p=document.getElementById('port');p.innerHTML='';"
-        "m.ports.forEach(function(x){var o=document.createElement('option');o.text=x;p.add(o);});}};"
-        "ws.onopen=function(){ws.send(JSON.stringify({cmd:'list'}));};"
-        "function drawViz(){var H=8,W=80,h='';var max=255;"
-        "for(var r=H-1;r>=0;r--){var line='';var th=(max/H)*(r+1);var tl=(max/H)*r;"
-        "for(var c=0;c<W;c++){var idx=Math.floor(c/vizBuf.length>1?c*vizBuf.length/W:c);var v=idx<vizBuf.length?vizBuf[idx]:0;"
-        "line+=(v>=tl&&v<th)?'█':(r===0?'_':' ');}"
-        "h+=line+'\\n';}"
-        "viz.textContent=h;viz.scrollTop=viz.scrollHeight;}"
-        "function draw3d(){var t=new Date().getTime()/1000;var s='';"
-        "for(var y=0;y<10;y++){var line='';for(var x=0;x<40;x++){var z=Math.sin(x/4+t)*Math.cos(y/3+t);line+=(z>0.5)?'▲':(z<-0.5)?'▼':'.';}s+=line+'\\n';}"
-        "viz.textContent='3D 姿态（示意）\\n'+s;}"
-        "document.getElementById('open').onclick=function(){ws.send(JSON.stringify({cmd:'open',port:document.getElementById('port').value,baud:parseInt(document.getElementById('baud').value)}));};"
-        "document.getElementById('close').onclick=function(){ws.send(JSON.stringify({cmd:'close'}));};"
-        "function sendCmd(box){var v=box.value;if(!v)return;"
-        "ws.send(JSON.stringify({cmd:'send',data:v,hex:document.getElementById('hex').checked}));"
-        "add(log,'[TX] '+v);box.value='';}"
-        "document.getElementById('send').onclick=function(){sendCmd(document.getElementById('sendbox'));};"
-        "document.getElementById('sendbox').onkeydown=function(e){if(e.key==='Enter')sendCmd(this);};"
-        "document.getElementById('termsend').onclick=function(){var b=document.getElementById('termbox');var v=b.value;if(!v)return;"
-        "ws.send(JSON.stringify({cmd:'send',data:v,hex:false}));add(term,'$ '+v);b.value='';};"
-        "document.getElementById('termbox').onkeydown=function(e){if(e.key==='Enter')document.getElementById('termsend').click();};"
-        "var navs=document.querySelectorAll('.nav');"
-        "navs.forEach(function(n){n.onclick=function(){navs.forEach(function(x){x.classList.remove('active');});this.classList.add('active');"
-        "var pg=this.getAttribute('data-p');document.querySelectorAll('.page').forEach(function(p){p.classList.remove('active');});"
-        "document.getElementById('pg-'+pg).classList.add('active');};});"
-        "document.getElementById('vizWave').onclick=function(){vizKind='wave';this.classList.add('on');document.getElementById('viz3d').classList.remove('on');};"
-        "document.getElementById('viz3d').onclick=function(){vizKind='3d';this.classList.add('on');document.getElementById('vizWave').classList.remove('on');draw3d();};"
-        "</script></body></html>";
+    // 读取内嵌资源（严格对齐原型的四页前端，见 src/launcher/web/index.html）。
+    QFile webFile(QStringLiteral(":/web/index.html"));
+    QByteArray html;
+    if (webFile.open(QIODevice::ReadOnly))
+        html = webFile.readAll();
+    else
+        html = "<html><body><h3>web/index.html resource missing</h3></body></html>";
     QByteArray resp = "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\n"
                       "Content-Length: " + QByteArray::number(html.size()) +
                       "\r\nConnection: close\r\n\r\n" + html;
@@ -263,12 +237,58 @@ void handleWebCommand(QTcpSocket *s, const QJsonObject &obj) {
     } else if (cmd == "send") {
         QString data = obj.value("data").toString();
         bool hex = obj.value("hex").toBool(false);
+        bool newline = obj.value("newline").toBool(true);
         QByteArray bytes;
         if (hex) bytes = SerialWorker::hexStringToByteArray(data);
-        else { bytes = data.toLatin1(); bytes += "\r\n"; }
+        else { bytes = data.toLatin1(); if (newline) bytes += "\r\n"; }
         qint64 n = g_web_worker->send(bytes);
         resp["ok"] = true;
         resp["bytes"] = static_cast<double>(n);
+    } else if (cmd == "setproto") {
+        // 前端编辑字段定义：保存到后端状态备用（不立即应用）。
+        g_web_fields = jsonToFields(obj.value("fields").toArray());
+        g_web_endian = obj.value("endian").toString("little");
+        resp["ok"] = true;
+    } else if (cmd == "getproto") {
+        resp["type"] = "proto";
+        resp["fields"] = fieldsToJson(g_web_fields);
+        resp["endian"] = g_web_endian;
+        resp["name"] = g_web_protoName;
+    } else if (cmd == "getsettings") {
+        resp["type"] = "settings";
+        resp["theme"] = g_web_theme;
+        resp["lang"] = g_web_lang;
+        resp["autobrowse"] = g_web_autoBrowse;
+        resp["timerMs"] = g_web_timerMs;
+        resp["dataBits"] = g_web_dataBits;
+        resp["stopBits"] = g_web_stopBits;
+        resp["parity"] = g_web_parity;
+        resp["flow"] = g_web_flow;
+    } else if (cmd == "setsettings") {
+        if (obj.contains("theme"))  g_web_theme  = obj.value("theme").toString();
+        if (obj.contains("lang"))   g_web_lang   = obj.value("lang").toString();
+        if (obj.contains("autobrowse")) g_web_autoBrowse = obj.value("autobrowse").toBool();
+        if (obj.contains("timerMs")) g_web_timerMs = obj.value("timerMs").toInt(1000);
+        if (obj.contains("dataBits")) g_web_dataBits = obj.value("dataBits").toInt(8);
+        if (obj.contains("stopBits")) g_web_stopBits = obj.value("stopBits").toInt(1);
+        if (obj.contains("parity"))  g_web_parity = obj.value("parity").toString();
+        if (obj.contains("flow"))    g_web_flow   = obj.value("flow").toString();
+        resp["ok"] = true;
+    } else if (cmd == "applyproto") {
+        sd::ProtocolSchema schema;
+        schema.name = obj.value("name").toString("cust").toStdString();
+        schema.defaultBigEndian = (obj.value("endian").toString("little") == "big");
+        schema.fields = g_web_fields;
+        bool ok = g_web_worker->applyProtocolSchema(schema);
+        resp["ok"] = ok;
+        if (ok) {
+            g_web_protoName = QString::fromStdString(schema.name);
+            resp["type"] = "schema";
+            resp["name"] = g_web_protoName;
+            resp["endian"] = schema.defaultBigEndian ? "big" : "little";
+        } else {
+            resp["err"] = "invalid schema (need at least one data field)";
+        }
     } else {
         resp["ok"] = false;
         resp["err"] = "unknown command";
@@ -288,6 +308,22 @@ int runWeb(QCoreApplication& app, int port, bool openBrowser) {
         QJsonObject o;
         o["type"] = "rx";
         o["data"] = QString::fromUtf8(data);
+        QJsonArray bytes;
+        for (int i = 0; i < data.size(); ++i) bytes.append(data[i] & 0xFF);
+        o["bytes"] = bytes;
+        for (QTcpSocket *s : g_web_clients) wsSend(s, o);
+    });
+    QObject::connect(g_web_worker, &SerialWorker::frameReceived, [](const sd::Frame &frame) {
+        QJsonObject o;
+        o["type"] = "frame";
+        o["seq"] = static_cast<double>(frame.seq);
+        o["name"] = QString::fromStdString(frame.name);
+        QJsonObject num;
+        for (const auto &kv : frame.numeric) num[QString::fromStdString(kv.first)] = kv.second;
+        o["numeric"] = num;
+        QJsonObject txt;
+        for (const auto &kv : frame.text) txt[QString::fromStdString(kv.first)] = QString::fromStdString(kv.second);
+        o["text"] = txt;
         for (QTcpSocket *s : g_web_clients) wsSend(s, o);
     });
     QObject::connect(g_web_worker, &SerialWorker::connectionChanged, [](bool open) {
@@ -315,10 +351,15 @@ int runWeb(QCoreApplication& app, int port, bool openBrowser) {
     }
     QObject::connect(g_web_server, &QTcpServer::newConnection, [&]() {
         while (QTcpSocket *s = g_web_server->nextPendingConnection()) {
-            g_web_buf[s].clear();
+            // 用隐式共享的 QByteArray 按值存取，避免 QHash 扩容导致引用失效
+            g_web_buf[s] = QByteArray();
             QObject::connect(s, &QTcpSocket::readyRead, [s]() {
-                QByteArray &buf = g_web_buf[s];
-                buf += s->readAll();
+                QByteArray chunk = s->readAll();
+                if (chunk.isEmpty()) return;
+                // 按值读取 + 追加 + 写回，绝不跨语句持有 QHash 引用。
+                // 并发连接触发 QHash 重新哈希时，引用会失效导致堆损坏。
+                QByteArray buf = g_web_buf.value(s);
+                buf += chunk;
 
                 if (buf.contains("Upgrade: websocket")) {
                     int ki = buf.indexOf("Sec-WebSocket-Key:");
@@ -334,13 +375,13 @@ int runWeb(QCoreApplication& app, int port, bool openBrowser) {
                         s->write(resp);
                         s->flush();
                         g_web_clients.insert(s);
-                        buf.clear();
+                        g_web_buf.remove(s);
                         return;
                     }
                 }
                 if (buf.contains("GET ")) {
                     serveIndex(s);
-                    buf.clear();
+                    g_web_buf.remove(s);
                     return;
                 }
 
@@ -349,12 +390,24 @@ int runWeb(QCoreApplication& app, int port, bool openBrowser) {
                 if (complete && !payload.isEmpty()) {
                     QJsonDocument doc = QJsonDocument::fromJson(payload);
                     if (doc.isObject()) handleWebCommand(s, doc.object());
+                    // 已完整消费，清空缓冲
+                    g_web_buf.remove(s);
+                } else if (!complete) {
+                    // 半包：保留缓冲，等待后续数据
+                    g_web_buf[s] = buf;
+                } else {
+                    g_web_buf.remove(s);
                 }
             });
             QObject::connect(s, &QTcpSocket::disconnected, [s]() {
                 g_web_clients.remove(s);
                 g_web_buf.remove(s);
                 s->deleteLater();
+            });
+            QObject::connect(s, &QAbstractSocket::errorOccurred, [s]() {
+                // 出错时清理，避免悬挂引用
+                g_web_clients.remove(s);
+                g_web_buf.remove(s);
             });
         }
     });

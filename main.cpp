@@ -9,6 +9,8 @@
 #include <QIcon>
 #include <QSettings>
 #include <QStringList>
+#include <QProcessEnvironment>
+#include <QProcess>
 #include <QDebug>
 
 // Version injected at build time from the git tag (APP_VERSION macro).
@@ -142,7 +144,30 @@ int main(int argc, char *argv[])
         if (cliArgs[i] == "--port" && i + 1 < cliArgs.size()) port = cliArgs[i + 1].toInt();
         if (cliArgs[i] == "--no-browser") openBrowser = false;
       }
-      // 有图形环境：启动后自动打开系统默认浏览器，进程转后台继续服务。
+      // 有图形环境（DISPLAY/WAYLAND_DISPLAY 存在）时，启动后自动打开系统默认
+      // 浏览器，并派生子进程在后台持续服务；无图形环境（无头服务器/沙箱）时
+      // 无法弹浏览器，改为前台运行并打印访问地址，避免 QDesktopServices 崩溃。
+      bool hasGui = !qEnvironmentVariableIsEmpty("DISPLAY")
+                 || !qEnvironmentVariableIsEmpty("WAYLAND_DISPLAY");
+      if (hasGui && !qEnvironmentVariableIsSet("SERIAL_DEBUG_WEB_BG")
+          && openBrowser) {
+        QProcess bg;
+        bg.setProgram(a.applicationFilePath());
+        QStringList args;
+        args << "--ui=web" << "--port" << QString::number(port);
+        bg.setArguments(args);
+        bg.setWorkingDirectory(a.applicationDirPath());
+        QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
+        env.insert("SERIAL_DEBUG_WEB_BG", "1");
+        bg.setProcessEnvironment(env);
+        if (bg.startDetached()) {
+          qInfo().noquote() << "Web server started in background (port " << port
+                            << "). Parent process exiting.";
+          return 0;
+        }
+        qWarning() << "Failed to detach background process; running web in foreground.";
+      }
+      if (!hasGui) openBrowser = false; // 无头环境：不自动开浏览器，避免崩溃
       return runWeb(a, port, openBrowser);
     }
 #ifdef HAVE_QML
