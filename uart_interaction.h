@@ -8,8 +8,10 @@
 #include <QStringList>
 #include <QVector>
 #include <QBoxLayout>
+#include <QTableWidgetItem>
 #include "ui/SerialWorker.hpp"
 #include "core/FieldSchema.hpp"
+#include "service/ViewManager.hpp"
 
 namespace Ui {
 class serial;
@@ -65,8 +67,7 @@ private slots:
   // ---- 协议解析页 ----
   void on_addFieldButton_clicked();
   void on_removeFieldButton_clicked();
-  void on_protoTable_itemSelectionChanged();
-  void on_applyFieldButton_clicked();
+  void on_protoTable_itemChanged(QTableWidgetItem *item);
   void on_applySchemaButton_clicked();
 
   // ---- 可视化页 ----
@@ -107,7 +108,6 @@ private:
   QString fieldTypeToCombo(sd::FieldType t) const;
 
   // 帧布局预览（对齐原型：字段字节条状图 + 图例）
-  void setupProtoLayoutPreview();
   void renderProtoLayoutPreview();
 
   // 可视化辅助
@@ -136,7 +136,6 @@ private:
   QVector<sd::FieldDesc> protoFields_;
 
   // 帧布局预览控件（对齐原型）
-  QWidget *protoLayoutSection_ = nullptr;   // 整个"帧布局预览"区块
   QWidget *protoLayoutBar_ = nullptr;       // 条状分段容器
   QWidget *protoLayoutLegend_ = nullptr;    // 图例容器
   QBoxLayout *protoLayoutBarLayout_ = nullptr;   // 条状分段水平布局
@@ -144,6 +143,9 @@ private:
 
   // 可视化实例（Qt 侧展示）
   QVector<ViewInstanceUi> vizViews_;
+
+  // 服务层视图管理器（管理视图类型与绑定）
+  sd::ViewManager viewManager_;
 };
 
 #endif // SERIAL_H

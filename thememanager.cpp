@@ -13,8 +13,8 @@ ThemeManager &ThemeManager::instance()
 ThemeManager::ThemeManager()
     : m_currentTheme("dark")
 {
-    // Register available themes
-    m_themes << "dark" << "light" << "system";
+    // Register available themes (system removed — only dark/light)
+    m_themes << "dark" << "light";
 }
 
 QStringList ThemeManager::availableThemes() const
@@ -43,19 +43,14 @@ void ThemeManager::applyTheme(const QString &themeName)
         return;
     }
 
-    // "system" theme uses the native platform styling (no QSS override)
-    if (themeName == "system") {
-        qApp->setStyleSheet(QString());
-    } else {
-        // Load the QSS from embedded resource
-        QString resourcePath = QString(":/styles/%1.qss").arg(themeName);
-        QFile styleFile(resourcePath);
+    // Load the QSS from embedded resource
+    QString resourcePath = QString(":/styles/%1.qss").arg(themeName);
+    QFile styleFile(resourcePath);
 
-        if (styleFile.open(QFile::ReadOnly | QFile::Text)) {
-            QString styleSheet = QString::fromUtf8(styleFile.readAll());
-            qApp->setStyleSheet(styleSheet);
-            styleFile.close();
-        }
+    if (styleFile.open(QFile::ReadOnly | QFile::Text)) {
+        QString styleSheet = QString::fromUtf8(styleFile.readAll());
+        qApp->setStyleSheet(styleSheet);
+        styleFile.close();
     }
 
     m_currentTheme = themeName;

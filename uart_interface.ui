@@ -1486,6 +1486,22 @@
                </spacer>
               </item>
               <item>
+               <widget class="QPushButton" name="applySchemaButton">
+                <property name="minimumSize">
+                 <size>
+                  <width>120</width>
+                  <height>30</height>
+                 </size>
+                </property>
+                <property name="styleSheet">
+                 <string notr="true">background-color: #7aa2f7; color: #1a1b26; font-weight: 600; border: none; border-radius: 4px;</string>
+                </property>
+                <property name="text">
+                 <string>应用协议</string>
+                </property>
+               </widget>
+              </item>
+              <item>
                <widget class="QPushButton" name="addFieldButton">
                 <property name="minimumSize">
                  <size>
@@ -1514,320 +1530,162 @@
              </layout>
             </widget>
            </item>
-           <item>
+           
+<item>
             <widget class="QWidget" name="protoContentWidget">
-             <layout class="QHBoxLayout" name="protoContentLayout">
+             <layout class="QVBoxLayout" name="protoContentLayout">
               <property name="spacing">
-               <number>12</number>
+               <number>8</number>
               </property>
               <item>
-               <widget class="QWidget" name="protoListWidget">
+               <widget class="QLabel" name="protoFieldsLabel">
+                <property name="text">
+                 <string>字段列表（双击直接编辑，勾选 → 进入字段池供可视化）</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QTableWidget" name="protoTable">
                 <property name="sizePolicy">
                  <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-                  <horstretch>1</horstretch>
-                  <verstretch>0</verstretch>
+                  <horstretch>0</horstretch>
+                  <verstretch>2</verstretch>
                  </sizepolicy>
                 </property>
-                <layout class="QVBoxLayout" name="protoListLayout">
-                 <property name="spacing">
-                  <number>6</number>
+                <property name="selectionBehavior">
+                 <enum>QAbstractItemView::SelectRows</enum>
+                </property>
+                <property name="editTriggers">
+                 <set>QAbstractItemView::DoubleClicked|QAbstractItemView::EditKeyPressed|QAbstractItemView::AnyKeyPressed</set>
+                </property>
+                <column>
+                 <property name="text">
+                  <string>勾选</string>
                  </property>
+                </column>
+                <column>
+                 <property name="text">
+                  <string>名称</string>
+                 </property>
+                </column>
+                <column>
+                 <property name="text">
+                  <string>类型</string>
+                 </property>
+                </column>
+                <column>
+                 <property name="text">
+                  <string>长度</string>
+                 </property>
+                </column>
+               </widget>
+              </item>
+              <item>
+               <widget class="QLabel" name="framePreviewTitle">
+                <property name="text">
+                 <string>帧字节布局预览</string>
+                </property>
+                <property name="font">
+                 <font>
+                  <pointsize>9</pointsize>
+                  <bold>true</bold>
+                 </font>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QWidget" name="framePreviewBar" native="true">
+                <property name="minimumSize">
+                 <size>
+                  <width>0</width>
+                  <height>32</height>
+                 </size>
+                </property>
+                <property name="maximumSize">
+                 <size>
+                  <width>16777215</width>
+                  <height>40</height>
+                 </size>
+                </property>
+                <property name="styleSheet">
+                 <string notr="true">background: #0d0d14; border: 1px solid rgba(255,255,255,.15); border-radius: 6px;</string>
+                </property>
+                <layout class="QHBoxLayout" name="framePreviewBarLayout">
                  <property name="leftMargin">
-                  <number>0</number>
+                  <number>2</number>
+                 </property>
+                 <property name="topMargin">
+                  <number>2</number>
                  </property>
                  <property name="rightMargin">
-                  <number>0</number>
+                  <number>2</number>
                  </property>
-                 <item>
-                  <widget class="QLabel" name="protoFieldsLabel">
-                   <property name="text">
-                    <string>字段列表（勾选 → 进入字段池供可视化）</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item>
-                  <widget class="QTableWidget" name="protoTable">
-                   <property name="sizePolicy">
-                    <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-                     <horstretch>0</horstretch>
-                     <verstretch>0</verstretch>
-                    </sizepolicy>
-                   </property>
-                   <property name="selectionBehavior">
-                    <enum>QAbstractItemView::SelectRows</enum>
-                   </property>
-                   <column>
-                    <property name="text">
-                     <string>勾选</string>
-                    </property>
-                   </column>
-                   <column>
-                    <property name="text">
-                     <string>名称</string>
-                    </property>
-                   </column>
-                   <column>
-                    <property name="text">
-                     <string>类型</string>
-                    </property>
-                   </column>
-                   <column>
-                    <property name="text">
-                     <string>长度</string>
-                    </property>
-                   </column>
-                  </widget>
-                 </item>
+                 <property name="bottomMargin">
+                  <number>2</number>
+                 </property>
                 </layout>
                </widget>
               </item>
               <item>
-               <widget class="QWidget" name="protoEditWidget">
-                <property name="sizePolicy">
-                 <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-                  <horstretch>1</horstretch>
-                  <verstretch>0</verstretch>
-                 </sizepolicy>
+               <widget class="QWidget" name="framePreviewLegend" native="true">
+                <property name="maximumSize">
+                 <size>
+                  <width>16777215</width>
+                  <height>24</height>
+                 </size>
                 </property>
-                <layout class="QVBoxLayout" name="protoEditLayout">
-                 <property name="spacing">
-                  <number>8</number>
-                 </property>
+                <property name="styleSheet">
+                 <string notr="true">background: transparent;</string>
+                </property>
+                <layout class="QHBoxLayout" name="framePreviewLegendLayout">
                  <property name="leftMargin">
+                  <number>0</number>
+                 </property>
+                 <property name="topMargin">
                   <number>0</number>
                  </property>
                  <property name="rightMargin">
                   <number>0</number>
                  </property>
-                 <item>
-                  <widget class="QLabel" name="fieldEditLabel">
-                   <property name="text">
-                    <string>字段编辑</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item>
-                  <widget class="QLabel" name="fieldNameLabel">
-                   <property name="text">
-                    <string>名称</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item>
-                  <widget class="QLineEdit" name="fieldNameEdit">
-                   <property name="minimumSize">
-                    <size>
-                     <width>0</width>
-                     <height>30</height>
-                    </size>
-                   </property>
-                  </widget>
-                 </item>
-                 <item>
-                  <widget class="QLabel" name="fieldTypeLabel">
-                   <property name="text">
-                    <string>类型</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item>
-                  <widget class="QComboBox" name="fieldTypeCombo">
-                   <property name="minimumSize">
-                    <size>
-                     <width>0</width>
-                     <height>30</height>
-                    </size>
-                   </property>
-                   <item>
-                    <property name="text">
-                     <string>uint8</string>
-                    </property>
-                   </item>
-                   <item>
-                    <property name="text">
-                     <string>uint16</string>
-                    </property>
-                   </item>
-                   <item>
-                    <property name="text">
-                     <string>uint32</string>
-                    </property>
-                   </item>
-                   <item>
-                    <property name="text">
-                     <string>int8</string>
-                    </property>
-                   </item>
-                   <item>
-                    <property name="text">
-                     <string>int16</string>
-                    </property>
-                   </item>
-                   <item>
-                    <property name="text">
-                     <string>int32</string>
-                    </property>
-                   </item>
-                   <item>
-                    <property name="text">
-                     <string>float</string>
-                    </property>
-                   </item>
-                   <item>
-                    <property name="text">
-                     <string>double</string>
-                    </property>
-                   </item>
-                   <item>
-                    <property name="text">
-                     <string>bool</string>
-                    </property>
-                   </item>
-                   <item>
-                    <property name="text">
-                     <string>padding</string>
-                    </property>
-                   </item>
-                  </widget>
-                 </item>
-                 <item>
-                  <widget class="QLabel" name="fieldLengthLabel">
-                   <property name="text">
-                    <string>长度（字节，0=自动）</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item>
-                  <widget class="QSpinBox" name="fieldLengthSpin">
-                   <property name="minimumSize">
-                    <size>
-                     <width>0</width>
-                     <height>30</height>
-                    </size>
-                   </property>
-                   <property name="maximum">
-                    <number>64</number>
-                   </property>
-                  </widget>
-                 </item>
-                 <item>
-                  <widget class="QLabel" name="fieldScaleLabel">
-                   <property name="text">
-                    <string>比例 / 偏移</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item>
-                  <widget class="QWidget" name="fieldScaleWidget">
-                   <layout class="QHBoxLayout" name="fieldScaleLayout">
-                    <property name="spacing">
-                     <number>8</number>
-                    </property>
-                    <property name="leftMargin">
-                     <number>0</number>
-                    </property>
-                    <property name="rightMargin">
-                     <number>0</number>
-                    </property>
-                    <item>
-                     <widget class="QDoubleSpinBox" name="fieldScaleSpin">
-                      <property name="minimumSize">
-                       <size>
-                        <width>0</width>
-                        <height>30</height>
-                       </size>
-                      </property>
-                      <property name="decimals">
-                       <number>3</number>
-                      </property>
-                      <property name="value">
-                       <double>1.000000000000000</double>
-                      </property>
-                     </widget>
-                    </item>
-                    <item>
-                     <widget class="QDoubleSpinBox" name="fieldOffsetSpin">
-                      <property name="minimumSize">
-                       <size>
-                        <width>0</width>
-                        <height>30</height>
-                       </size>
-                      </property>
-                      <property name="decimals">
-                       <number>3</number>
-                      </property>
-                     </widget>
-                    </item>
-                   </layout>
-                  </widget>
-                 </item>
-                 <item>
-                  <widget class="QLabel" name="fieldUnitLabel">
-                   <property name="text">
-                    <string>单位</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item>
-                  <widget class="QLineEdit" name="fieldUnitEdit">
-                   <property name="minimumSize">
-                    <size>
-                     <width>0</width>
-                     <height>30</height>
-                    </size>
-                   </property>
-                  </widget>
-                 </item>
-                 <item>
-                  <widget class="QCheckBox" name="fieldPoolCheck">
-                   <property name="checked">
-                    <bool>true</bool>
-                   </property>
-                   <property name="text">
-                    <string>进入字段池（可作可视化数据源）</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item>
-                  <widget class="QPushButton" name="applyFieldButton">
-                   <property name="minimumSize">
-                    <size>
-                     <width>0</width>
-                     <height>32</height>
-                    </size>
-                   </property>
-                   <property name="text">
-                    <string>应用修改</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item>
-                  <spacer name="protoEditSpacer">
-                   <property name="orientation">
-                    <enum>Qt::Vertical</enum>
-                   </property>
-                   <property name="sizeHint" stdset="0">
-                    <size>
-                     <width>20</width>
-                     <height>20</height>
-                    </size>
-                   </property>
-                  </spacer>
-                 </item>
-                 <item>
-                  <widget class="QPushButton" name="applySchemaButton">
-                   <property name="minimumSize">
-                    <size>
-                     <width>0</width>
-                     <height>36</height>
-                    </size>
-                   </property>
-                   <property name="text">
-                    <string>应用协议（写入字段池）</string>
-                   </property>
-                  </widget>
-                 </item>
+                 <property name="bottomMargin">
+                  <number>0</number>
+                 </property>
                 </layout>
+               </widget>
+              </item>
+              <item>
+               <widget class="QLabel" name="parsedDataTitle">
+                <property name="text">
+                 <string>实时解析数据（最近一帧）</string>
+                </property>
+                <property name="font">
+                 <font>
+                  <pointsize>9</pointsize>
+                  <bold>true</bold>
+                 </font>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QTextEdit" name="parsedDataView">
+                <property name="sizePolicy">
+                 <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+                  <horstretch>0</horstretch>
+                  <verstretch>1</verstretch>
+                 </sizepolicy>
+                </property>
+                <property name="maximumSize">
+                 <size>
+                  <width>16777215</width>
+                  <height>150</height>
+                 </size>
+                </property>
+                <property name="readOnly">
+                 <bool>true</bool>
+                </property>
+                <property name="styleSheet">
+                 <string notr="true">background: #16161e; color: #c0caf5; font-family: 'JetBrains Mono', 'Consolas', monospace; font-size: 11px; border: 1px solid #3a3f5a; border-radius: 4px;</string>
+                </property>
                </widget>
               </item>
              </layout>
@@ -1835,6 +1693,7 @@
            </item>
           </layout>
          </widget>
+          
          <widget class="QWidget" name="pageVisualization">
           <layout class="QVBoxLayout" name="pageVizLayout">
            <property name="spacing">

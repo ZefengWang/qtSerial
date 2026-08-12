@@ -25,6 +25,8 @@
 #include <QScrollArea>
 #include <QFrame>
 #include <QPolygonF>
+#include <QStyledItemDelegate>
+#include <QComboBox>
 #include <cmath>
 
 // ============================================================
@@ -161,6 +163,43 @@ private:
 };
 
 // ============================================================
+// 表格委托类（协议表：勾选列不可编辑、类型列下拉选择）
+// ============================================================
+class NoEditDelegate : public QStyledItemDelegate {
+public:
+    explicit NoEditDelegate(QObject *parent = nullptr) : QStyledItemDelegate(parent) {}
+    QWidget *createEditor(QWidget *, const QStyleOptionViewItem &, const QModelIndex &) const override {
+        return nullptr; // 不可编辑
+    }
+};
+
+class FieldTypeDelegate : public QStyledItemDelegate {
+public:
+    explicit FieldTypeDelegate(QObject *parent = nullptr) : QStyledItemDelegate(parent) {}
+
+    QWidget *createEditor(QWidget *parent, const QStyleOptionViewItem &, const QModelIndex &) const override {
+        auto *combo = new QComboBox(parent);
+        combo->addItems({"uint8", "uint16", "uint32", "int8", "int16", "int32",
+                         "float", "double", "bool", "padding"});
+        return combo;
+    }
+
+    void setEditorData(QWidget *editor, const QModelIndex &index) const override {
+        auto *combo = qobject_cast<QComboBox*>(editor);
+        if (!combo) return;
+        QString txt = index.data(Qt::EditRole).toString();
+        int idx = combo->findText(txt);
+        if (idx >= 0) combo->setCurrentIndex(idx);
+    }
+
+    void setModelData(QWidget *editor, QAbstractItemModel *model, const QModelIndex &index) const override {
+        auto *combo = qobject_cast<QComboBox*>(editor);
+        if (!combo) return;
+        model->setData(index, combo->currentText(), Qt::EditRole);
+    }
+};
+
+// ============================================================
 // 主窗口
 // ============================================================
 serial::serial(QWidget *parent) :
@@ -216,6 +255,14 @@ serial::serial(QWidget *parent) :
   connect(worker_, &SerialWorker::dataReceived, this, &serial::readSerialData);
   // 协议帧：更新字段池并由可视化视图消费
   connect(worker_, &SerialWorker::frameReceived, this, &serial::onFrameReceived);
+  // 连接状态变化（串口被拔出/外部关闭时同步 UI）
+  connect(worker_, &SerialWorker::connectionChanged, this, [this](bool connected) {
+    is_the_serial_port_open_ = connected;
+    updateConnectionStatus(connected);
+    if (!connected) {
+      appendReceiveData(tr("[System] Serial port disconnected"));
+    }
+  });
 
   // 初始化连接状态显示
   updateConnectionStatus(false);
@@ -240,9 +287,21 @@ serial::serial(QWidget *parent) :
   ui->protoTable->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
   ui->protoTable->setSelectionBehavior(QAbstractItemView::SelectRows);
   ui->protoTable->setSelectionMode(QAbstractItemView::SingleSelection);
+  // 表格可直接编辑（名称、长度列）
+  ui->protoTable->setEditTriggers(QAbstractItemView::DoubleClicked |
+                                   QAbstractItemView::EditKeyPressed |
+                                   QAbstractItemView::AnyKeyPressed);
+  // 勾选列不可编辑
+  ui->protoTable->setItemDelegateForColumn(0, new NoEditDelegate(this));
+  // 类型列用 ComboBox 代理
+  ui->protoTable->setItemDelegateForColumn(2, new FieldTypeDelegate(this));
 
-  // 初始化帧布局预览（对齐原型"帧字节布局预览"区）
-  setupProtoLayoutPreview();
+  // 初始化帧布局预览（使用 .ui 中的 framePreviewBar / framePreviewLegend）
+  protoLayoutBar_ = ui->framePreviewBar;
+  protoLayoutBarLayout_ = qobject_cast<QHBoxLayout*>(ui->framePreviewBar->layout());
+  protoLayoutLegend_ = ui->framePreviewLegend;
+  protoLayoutLegendLayout_ = qobject_cast<QHBoxLayout*>(ui->framePreviewLegend->layout());
+  renderProtoLayoutPreview();
 
   // 初始化可视化源列表
   ui->vizSourceList->setSelectionMode(QAbstractItemView::MultiSelection);
@@ -315,6 +374,11 @@ void serial::setupConnections() {
   connect(ui->stopBitsComboLeft, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this](){
       worker_->config().stopBits = ui->stopBitsComboLeft->currentText().toDouble();
       syncSerialSettingsLeftToSettingsPage();
+  });
+
+  // 波特率变更同步到 config（打开串口时读取）
+  connect(ui->baudComboBox, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this](){
+    worker_->config().baudRate = ui->baudComboBox->currentText().toInt();
   });
 }
 
@@ -715,55 +779,8 @@ QString serial::fieldTypeToCombo(sd::FieldType t) const {
 }
 
 // ============================================================
-// 帧布局预览（对齐原型：协议解析页的"帧字节布局预览"）
-// 用一条水平条状分段 + 图例，展示每字段按字节占比的布局。
-// ============================================================
-void serial::setupProtoLayoutPreview() {
-  // 标题行
-  auto *title = new QLabel(tr("帧字节布局预览"), ui->pageProtocol);
-  QFont tf = title->font();
-  tf.setPointSize(9);
-  tf.setBold(true);
-  title->setFont(tf);
-
-  // 条状分段容器（高度 30，水平排列）
-  protoLayoutBar_ = new QWidget(ui->pageProtocol);
-  protoLayoutBar_->setFixedHeight(30);
-  protoLayoutBar_->setStyleSheet(
-      "QWidget{background:#0d0d14;border:1px solid rgba(255,255,255,.15);"
-      "border-radius:6px;}");
-  auto *barLayout = new QHBoxLayout(protoLayoutBar_);
-  barLayout->setContentsMargins(0, 0, 0, 0);
-  barLayout->setSpacing(1);
-  protoLayoutBar_->setLayout(barLayout);
-  protoLayoutBarLayout_ = barLayout;
-
-  // 图例容器
-  protoLayoutLegend_ = new QWidget(ui->pageProtocol);
-  protoLayoutLegend_->setStyleSheet("background:transparent;");
-  protoLayoutLegend_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Minimum);
-  auto *legendLayout = new QHBoxLayout(protoLayoutLegend_);
-  legendLayout->setContentsMargins(0, 0, 0, 0);
-  legendLayout->setSpacing(12);
-  protoLayoutLegend_->setLayout(legendLayout);
-  protoLayoutLegendLayout_ = legendLayout;
-
-  // 组装区块
-  protoLayoutSection_ = new QWidget(ui->pageProtocol);
-  auto *sectionLayout = new QVBoxLayout(protoLayoutSection_);
-  sectionLayout->setContentsMargins(0, 0, 0, 0);
-  sectionLayout->setSpacing(6);
-  sectionLayout->addWidget(title);
-  sectionLayout->addWidget(protoLayoutBar_);
-  sectionLayout->addWidget(protoLayoutLegend_);
-
-  // 插入到字段编辑列的最底部（应用协议按钮之后）
-  if (ui->protoEditLayout) {
-    ui->protoEditLayout->addWidget(protoLayoutSection_);
-  }
-
-  renderProtoLayoutPreview();
-}
+// 帧布局预览控件已在 .ui 中定义（framePreviewBar / framePreviewLegend），
+// 此处仅保留 renderProtoLayoutPreview() 渲染逻辑。
 
 void serial::renderProtoLayoutPreview() {
   if (!protoLayoutBar_ || !protoLayoutLegend_) return;
@@ -820,9 +837,9 @@ void serial::renderProtoLayoutPreview() {
     segLabel->setAlignment(Qt::AlignCenter);
     segLay->addWidget(segLabel);
     // 设置宽度占比
-    seg->setMinimumSize(8, 28);
-    seg->setMaximumWidth(static_cast<int>(protoLayoutBar_->width() * pct / 100.0));
-    protoLayoutBarLayout_->addWidget(seg, static_cast<int>(pct), Qt::AlignLeft);
+    seg->setFixedHeight(28);
+    seg->setMinimumWidth(8);
+    protoLayoutBarLayout_->addWidget(seg, static_cast<int>(pct * 10), Qt::AlignVCenter);
 
     // 图例
     auto *ld = new QLabel(protoLayoutLegend_);
@@ -884,45 +901,30 @@ void serial::on_removeFieldButton_clicked() {
   renderProtoLayoutPreview();
 }
 
-void serial::on_protoTable_itemSelectionChanged() {
-  int row = ui->protoTable->currentRow();
+void serial::on_protoTable_itemChanged(QTableWidgetItem *item) {
+  if (!item) return;
+  int row = item->row();
+  int col = item->column();
   if (row < 0 || row >= protoFields_.size()) return;
-  const sd::FieldDesc &fd = protoFields_.at(row);
 
-  ui->fieldNameEdit->setText(QString::fromStdString(fd.name));
-  ui->fieldTypeCombo->setCurrentText(fieldTypeToCombo(fd.type));
-  if (fd.isPadding) ui->fieldTypeCombo->setCurrentText("padding");
-  ui->fieldLengthSpin->setValue(fd.byteLength > 0 ? fd.byteLength : sd::fieldTypeBytes(fd.type));
-  ui->fieldScaleSpin->setValue(fd.scale);
-  ui->fieldOffsetSpin->setValue(fd.offset);
-  ui->fieldUnitEdit->setText(QString::fromStdString(fd.unit));
-  ui->fieldPoolCheck->setChecked(!fd.isPadding);
-}
-
-void serial::on_applyFieldButton_clicked() {
-  int row = ui->protoTable->currentRow();
-  if (row < 0 || row >= protoFields_.size()) return;
-  sd::FieldDesc &fd = protoFields_[row];
-
-  fd.name = ui->fieldNameEdit->text().toStdString();
-  QString typeTxt = ui->fieldTypeCombo->currentText();
-  fd.isPadding = (typeTxt == "padding");
-  if (!fd.isPadding) {
-    fd.type = comboToFieldType(typeTxt);
-    fd.byteLength = ui->fieldLengthSpin->value();
-  } else {
-    fd.byteLength = ui->fieldLengthSpin->value();
+  // 同步表格编辑回 protoFields_
+  if (col == 1) {
+    // 名称
+    protoFields_[row].name = item->text().toStdString();
+  } else if (col == 2) {
+    // 类型
+    QString typeTxt = item->text();
+    protoFields_[row].isPadding = (typeTxt == "padding");
+    if (!protoFields_[row].isPadding)
+      protoFields_[row].type = comboToFieldType(typeTxt);
+  } else if (col == 3) {
+    // 长度（从 "4B" 格式解析）
+    QString lenTxt = item->text();
+    lenTxt.remove('B');
+    bool ok = false;
+    int len = lenTxt.toInt(&ok);
+    if (ok && len > 0) protoFields_[row].byteLength = len;
   }
-  fd.scale = ui->fieldScaleSpin->value();
-  fd.offset = ui->fieldOffsetSpin->value();
-  fd.unit = ui->fieldUnitEdit->text().toStdString();
-
-  // 回写表格
-  ui->protoTable->item(row, 1)->setText(QString::fromStdString(fd.name));
-  ui->protoTable->item(row, 2)->setText(typeTxt);
-  int len = fd.byteLength > 0 ? fd.byteLength : sd::fieldTypeBytes(fd.type);
-  ui->protoTable->item(row, 3)->setText(QString("%1B").arg(len));
-  ui->protoTable->item(row, 0)->setCheckState(fd.isPadding ? Qt::Unchecked : Qt::Checked);
   renderProtoLayoutPreview();
 }
 
@@ -967,6 +969,15 @@ void serial::on_applySchemaButton_clicked() {
         .arg(schema.fields.size())
         .arg(schema.totalBytes()));
     refreshVizSources();
+
+    // 协议变更后校验已有视图绑定，清理失效字段
+    auto invalid = viewManager_.validateFields(worker_->fieldPool());
+    if (!invalid.empty()) {
+      QStringList names;
+      for (const auto &n : invalid) names << QString::fromStdString(n);
+      appendReceiveData(tr("[Protocol] Warning: %1 bound field(s) no longer exist: %2")
+          .arg(names.size()).arg(names.join(", ")));
+    }
   } else {
     appendReceiveData(tr("[Protocol] Failed to apply schema"));
   }
@@ -998,8 +1009,16 @@ void serial::refreshVizSources() {
   }
 }
 
-void serial::on_vizTypeCombo_currentIndexChanged(int) {
-  // 类型切换即互斥——已有视图保留，新建视图用新类型
+void serial::on_vizTypeCombo_currentIndexChanged(int index) {
+  // 通过服务层 ViewManager 管理视图类型（互斥切换）
+  QString typeName = ui->vizTypeCombo->itemText(index);
+  if (typeName == tr("波形图")) {
+    viewManager_.setType(sd::ViewType::Wave);
+  } else if (typeName == tr("数据表格")) {
+    viewManager_.setType(sd::ViewType::Table);
+  } else {
+    viewManager_.setType(sd::ViewType::None);
+  }
 }
 
 void serial::addVizViewCard(const ViewInstanceUi &vi) {
@@ -1069,10 +1088,20 @@ void serial::on_addViewButton_clicked() {
     return;
   }
 
-  QString typeName = ui->vizTypeCombo->currentText(); // 波形图 / 3D姿态
+  // 确保视图类型已设置（首次添加时自动设置）
+  if (!viewManager_.configured()) {
+    viewManager_.setType(sd::ViewType::Wave);
+  }
+
+  QString typeName = ui->vizTypeCombo->currentText();
+
+  // 通过服务层 ViewManager 创建视图绑定
+  std::vector<std::string> fieldVec;
+  for (const auto &s : selected) fieldVec.push_back(s.toStdString());
+  std::string viewId = viewManager_.addView(fieldVec, typeName.toStdString());
 
   ViewInstanceUi vi;
-  vi.viewId = QString("view-%1").arg(vizViews_.size() + 1);
+  vi.viewId = QString::fromStdString(viewId);
   vi.typeName = typeName;
   vi.title = typeName;
   vi.fields = selected;
@@ -1088,23 +1117,44 @@ void serial::removeVizView(const QString &viewId) {
       break;
     }
   }
+  // 同步移除服务层 ViewManager 中的绑定
+  viewManager_.removeView(viewId.toStdString());
   rebuildVizViews();
 }
 
 void serial::onFrameReceived(const sd::Frame &frame) {
-  // 把帧数据推给所有视图卡片
+  // 1) 把帧数据推给所有可视化视图卡片
   QLayout *lay = ui->vizCanvasContainer->layout();
   for (int i = 0; i < lay->count(); ++i) {
     QWidget *w = lay->itemAt(i)->widget();
     if (QFrame *card = qobject_cast<QFrame*>(w)) {
-      // 找到卡片里的绘制区。
-      // VizPlotWidget 是局部类、无 Q_OBJECT，新版 Qt 禁止对其
-      // findChildren<custom*>()/qobject_cast。用动态属性标记 + static_cast 定位。
       const auto kidWidgets = card->findChildren<QWidget*>();
       for (QWidget *kid : kidWidgets)
         if (kid->property("sdVizPlot").toBool())
           static_cast<VizPlotWidget*>(kid)->pushSample(frame);
     }
+  }
+
+  // 2) 更新协议解析页的实时解析数据显示
+  if (ui->parsedDataView) {
+    QString html = QString("<div style='color:#7aa2f7;font-weight:bold;'>"
+                           "帧 #%1 [%2] · %3 字段</div><br>")
+                        .arg(frame.seq)
+                        .arg(QString::fromStdString(frame.name))
+                        .arg(frame.numeric.size() + frame.text.size());
+    for (const auto &kv : frame.numeric) {
+      html += QString("<div style='color:#9ece6a;'>%1</div>"
+                      "<div style='color:#c0caf5;margin-left:12px;'>= %2</div>")
+                  .arg(QString::fromStdString(kv.first))
+                  .arg(kv.second, 0, 'g', 6);
+    }
+    for (const auto &kv : frame.text) {
+      html += QString("<div style='color:#e0af68;'>%1</div>"
+                      "<div style='color:#c0caf5;margin-left:12px;'>= %2</div>")
+                  .arg(QString::fromStdString(kv.first))
+                  .arg(QString::fromStdString(kv.second));
+    }
+    ui->parsedDataView->setHtml(html);
   }
 }
 
@@ -1119,7 +1169,6 @@ void serial::initSettingsPage() {
   {
     QSignalBlocker blocker(ui->themeCombo);
     ui->themeCombo->clear();
-    ui->themeCombo->addItem(tr("跟随系统"), QStringLiteral("system"));
     ui->themeCombo->addItem(tr("深色"),    QStringLiteral("dark"));
     ui->themeCombo->addItem(tr("浅色"),    QStringLiteral("light"));
     int themeIdx = ui->themeCombo->findData(ThemeManager::instance().currentTheme());
@@ -1158,11 +1207,9 @@ void serial::initSettingsPage() {
 }
 
 void serial::on_themeCombo_currentTextChanged(const QString &t) {
-  // 界面文本 -> ThemeManager 主题名：跟随系统→system, 深色→dark, 浅色→light
   QString theme;
-  if (t == tr("跟随系统"))      theme = "system";
-  else if (t == tr("深色"))     theme = "dark";
-  else if (t == tr("浅色"))     theme = "light";
+  if (t == tr("深色"))     theme = "dark";
+  else if (t == tr("浅色")) theme = "light";
   else theme = t;
   ThemeManager::instance().applyTheme(theme);
 }
