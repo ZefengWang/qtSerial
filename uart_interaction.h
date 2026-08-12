@@ -52,6 +52,12 @@ private slots:
   // ---- 导航 ----
   void on_navList_currentRowChanged(int row);
 
+  // ---- 设置页 ----
+  void on_themeCombo_currentTextChanged(const QString &t);
+  void on_languageCombo_currentTextChanged(const QString &l);
+  void on_applyInlineSettingsBtn_clicked();
+  void on_resetInlineSettingsBtn_clicked();
+
   // ---- 终端页 ----
   void on_termSendButton_clicked();
   void onTermInputReturnPressed();
@@ -87,6 +93,9 @@ private:
 
   void setupMenus();
   void retranslateUi();
+
+  // 设置页辅助：加载当前主题/语言到下拉框，加载 worker_->config() 串口参数到内联控件
+  void initSettingsPage();
 
   // 协议解析辅助
   void addProtoRow(const sd::FieldDesc &fd);

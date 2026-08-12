@@ -91,6 +91,8 @@ bool LanguageManager::setLanguage(const QString &languageCode)
     // Remove existing translator
     if (m_translator) {
         qApp->removeTranslator(m_translator);
+    } else {
+        m_translator = new QTranslator(qApp);
     }
 
     // Search paths for .qm file

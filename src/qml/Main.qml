@@ -57,82 +57,88 @@ ApplicationWindow {
             }
         }
 
-        // Main content: sidebar + page stack
-        RowLayout {
+        // Top horizontal tab navigation (对齐新原型：替代原左侧侧边栏)
+        Rectangle {
+            id: navBar
+            height: 44
+            color: "#1f2335"
             Layout.fillWidth: true
-            Layout.fillHeight: true
-            spacing: 0
 
-            // Sidebar navigation
-            Rectangle {
-                id: sidebar
-                width: 180
-                color: "#1a1b26"
-                Layout.fillHeight: true
+            Row {
+                anchors.fill: parent
+                anchors.leftMargin: 8
+                spacing: 4
 
-                ColumnLayout {
-                    anchors.fill: parent
-                    spacing: 4
-                    anchors.margins: 8
-
-                    NavButton {
-                        text: "基础"
-                        page: 0
-                        active: currentPage === 0
-                        onClicked: currentPage = 0
-                    }
-                    NavButton {
-                        text: "终端"
-                        page: 1
-                        active: currentPage === 1
-                        onClicked: currentPage = 1
-                    }
-                    NavButton {
-                        text: "协议解析"
-                        page: 2
-                        active: currentPage === 2
-                        onClicked: currentPage = 2
-                    }
-                    NavButton {
-                        text: "可视化"
-                        page: 3
-                        active: currentPage === 3
-                        onClicked: currentPage = 3
-                    }
-
-                    Item { Layout.fillHeight: true }
+                NavButton {
+                    text: "基础"
+                    page: 0
+                    active: currentPage === 0
+                    onClicked: currentPage = 0
+                }
+                NavButton {
+                    text: "终端"
+                    page: 1
+                    active: currentPage === 1
+                    onClicked: currentPage = 1
+                }
+                NavButton {
+                    text: "协议解析"
+                    page: 2
+                    active: currentPage === 2
+                    onClicked: currentPage = 2
+                }
+                NavButton {
+                    text: "可视化"
+                    page: 3
+                    active: currentPage === 3
+                    onClicked: currentPage = 3
+                }
+                NavButton {
+                    text: "设置"
+                    page: 4
+                    active: currentPage === 4
+                    onClicked: currentPage = 4
                 }
             }
+        }
 
-            // Page stack
-            StackView {
-                id: stack
-                Layout.fillWidth: true
-                Layout.fillHeight: true
-                initialItem: basicPage
-            }
+        // Page stack
+        StackView {
+            id: stack
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            initialItem: basicPage
         }
     }
 
-    // Navigation button component
+    // Top horizontal tab button component
     component NavButton: Rectangle {
         property alias text: label.text
         property int page: 0
         property bool active: false
 
-        color: active ? "#7aa2f7" : "transparent"
-        radius: 6
-        height: 36
+        implicitWidth: label.width + 36
+        height: parent.height
+        color: active ? "#2a2e42" : "transparent"
+
+        Rectangle {
+            width: parent.width
+            height: 2
+            anchors.top: parent.top
+            color: active ? "#7aa2f7" : "transparent"
+        }
 
         Text {
             id: label
-            color: active ? "#1a1b26" : "#c0caf5"
+            color: active ? "#7aa2f7" : "#c0caf5"
             anchors.centerIn: parent
-            font.pointSize: 14
+            font.pointSize: 13
+            font.bold: active
         }
 
         MouseArea {
             anchors.fill: parent
+            hoverEnabled: true
             onClicked: parent.clicked()
         }
 
@@ -152,6 +158,9 @@ ApplicationWindow {
     VizPage {
         id: vizPage
     }
+    SettingsPage {
+        id: settingsPage
+    }
 
     property int currentPage: 0
     property bool connected: serialWorker.isOpen
@@ -162,6 +171,7 @@ ApplicationWindow {
             case 1: stack.replace(terminalPage); break
             case 2: stack.replace(protocolPage); break
             case 3: stack.replace(vizPage); break
+            case 4: stack.replace(settingsPage); break
         }
     }
 

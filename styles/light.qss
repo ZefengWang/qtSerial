@@ -662,6 +662,55 @@ QListWidget::item:selected {
     color: #2a6fd6;
 }
 
+/* --- Top tab navigation (navList horizontal) --- */
+QListWidget#navList {
+    background: transparent;
+    border: none;
+    outline: none;
+}
+QListWidget#navList::item {
+    background: transparent;
+    padding: 0 16px;
+    height: 42px;
+    color: #5b6b7c;
+    border-bottom: 2px solid transparent;
+    border-radius: 0;
+}
+QListWidget#navList::item:hover {
+    background: transparent;
+    background-color: #eaf2ff;
+    color: #1a2332;
+}
+QListWidget#navList::item:selected {
+    background: transparent;
+    background-color: #eaf2ff;
+    color: #2a6fd6;
+    border-bottom: 2px solid #2a6fd6;
+    font-weight: 700;
+}
+
+/* --- Settings page left category nav --- */
+QListWidget#settingsNavList {
+    background: #ffffff;
+    border: 1px solid #dbe2ec;
+    border-radius: 8px;
+    padding: 4px;
+}
+QListWidget#settingsNavList::item {
+    padding: 8px 12px;
+    border-radius: 6px;
+    color: #5b6b7c;
+    border: none;
+}
+QListWidget#settingsNavList::item:hover {
+    background-color: #eaf2ff;
+}
+QListWidget#settingsNavList::item:selected {
+    background-color: rgba(42,111,214,.12);
+    color: #2a6fd6;
+    font-weight: 700;
+}
+
 /* --- Stacked Widget --- */
 QStackedWidget {
     background-color: #f4f6fb;

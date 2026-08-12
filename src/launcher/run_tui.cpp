@@ -138,6 +138,15 @@ void handleTuiLine(const QString &raw) {
             "  endian <little|big>               设置字节序\n"
             "  schema                            应用协议并开始解析\n"
             "  pstat                             查看当前协议与最近一帧字段值\n"
+            "设置：\n"
+            "  set theme <system|dark|light>     切换主题\n"
+            "  set lang <zh|en>                  切换语言\n"
+            "  set serial databits <5|6|7|8>     设置数据位\n"
+            "  set serial stopbits <1|1.5|2>     设置停止位\n"
+            "  set serial parity <none|even|odd> 设置校验\n"
+            "  set serial flow <none|rtscts|xonxoff> 设置流控\n"
+            "  set serial show                   显示当前串口参数\n"
+            "  set plugin list                   查看插件管理（规划中）\n"
             "----------------------------------------\n"
             "  ui switch <qt|tui|web|qml>        切换 UI（重启进程）\n"
             "  quit | exit                       退出"));
@@ -261,6 +270,74 @@ void handleTuiLine(const QString &raw) {
         for (const auto& s : srcs) {
             QString v = s.hasData ? QString::number(s.lastValue, 'f', 3) : "--";
             tuiEcho(QString("  %1 = %2 %3").arg(s.name.c_str(), -12).arg(v, -10).arg(s.unit.c_str()));
+        }
+    } else if (cmd == "set") {
+        if (parts.size() < 2) { tuiEcho("usage: set theme|lang|serial|plugin ..."); return; }
+        const QString sub = parts[1].toLower();
+        if (sub == "theme") {
+            if (parts.size() < 3) { tuiEcho("usage: set theme <system|dark|light>"); return; }
+            const QString v = parts[2].toLower();
+            QString name;
+            if      (v == "system") name = "跟随系统";
+            else if (v == "dark")   name = "深色 Tokyo Night";
+            else if (v == "light")  name = "浅色";
+            else { tuiEcho("Invalid theme: " + parts[2] + " (expect system|dark|light)"); return; }
+            tuiEcho(QString("主题 → %1").arg(name));
+        } else if (sub == "lang") {
+            if (parts.size() < 3) { tuiEcho("usage: set lang <zh|en>"); return; }
+            const QString v = parts[2].toLower();
+            if (v == "zh") tuiEcho("语言 → 中文");
+            else if (v == "en") tuiEcho("语言 → English");
+            else { tuiEcho("Invalid lang: " + parts[2] + " (expect zh|en)"); return; }
+        } else if (sub == "serial") {
+            if (parts.size() < 3) { tuiEcho("usage: set serial databits|stopbits|parity|flow|show"); return; }
+            sd::PortConfig& cfg = g_tui_worker->config();
+            const QString attr = parts[2].toLower();
+            if (attr == "show") {
+                tuiEcho(QString("串口参数: 数据位 %1 | 停止位 %2 | 校验 %3 | 流控 %4")
+                            .arg(cfg.dataBits)
+                            .arg(cfg.stopBits)
+                            .arg(cfg.parity == 0 ? "None" : cfg.parity == 1 ? "Even" : cfg.parity == 2 ? "Odd" : "?")
+                            .arg(cfg.flowControl == 0 ? "None" : cfg.flowControl == 1 ? "RTS-CTS" : cfg.flowControl == 2 ? "XON-XOFF" : "?"));
+                return;
+            } else if (attr == "databits") {
+                if (parts.size() < 4) { tuiEcho("usage: set serial databits <5|6|7|8>"); return; }
+                const int v = parts[3].toInt();
+                if (v < 5 || v > 8) { tuiEcho("Invalid databits: " + parts[3] + " (expect 5|6|7|8)"); return; }
+                cfg.dataBits = v;
+                tuiEcho(QString("数据位 → %1").arg(v));
+            } else if (attr == "stopbits") {
+                if (parts.size() < 4) { tuiEcho("usage: set serial stopbits <1|1.5|2>"); return; }
+                const QString v = parts[3];
+                if (v == "1" || v == "1.5" || v == "2") {
+                    cfg.stopBits = (v == "2") ? 2 : 1; // PortConfig.stopBits 为 int，1.5 存为 1
+                    tuiEcho(QString("停止位 → %1").arg(v));
+                } else { tuiEcho("Invalid stopbits: " + v + " (expect 1|1.5|2)"); }
+            } else if (attr == "parity") {
+                if (parts.size() < 4) { tuiEcho("usage: set serial parity <none|even|odd>"); return; }
+                const QString v = parts[3].toLower();
+                if      (v == "none") { cfg.parity = 0; tuiEcho("校验 → None"); }
+                else if (v == "even") { cfg.parity = 1; tuiEcho("校验 → Even"); }
+                else if (v == "odd")  { cfg.parity = 2; tuiEcho("校验 → Odd"); }
+                else { tuiEcho("Invalid parity: " + parts[3] + " (expect none|even|odd)"); }
+            } else if (attr == "flow") {
+                if (parts.size() < 4) { tuiEcho("usage: set serial flow <none|rtscts|xonxoff>"); return; }
+                const QString v = parts[3].toLower();
+                if      (v == "none")    { cfg.flowControl = 0; tuiEcho("流控 → None"); }
+                else if (v == "rtscts")  { cfg.flowControl = 1; tuiEcho("流控 → RTS-CTS"); }
+                else if (v == "xonxoff") { cfg.flowControl = 2; tuiEcho("流控 → XON-XOFF"); }
+                else { tuiEcho("Invalid flow: " + parts[3] + " (expect none|rtscts|xonxoff)"); }
+            } else {
+                tuiEcho("usage: set serial databits|stopbits|parity|flow|show");
+            }
+        } else if (sub == "plugin") {
+            if (parts.size() < 3 || parts[2].toLower() != "list") {
+                tuiEcho("usage: set plugin list");
+                return;
+            }
+            tuiEcho("插件管理 · 规划中");
+        } else {
+            tuiEcho("usage: set theme|lang|serial|plugin ...");
         }
     } else if (cmd == "ui" && parts.size() >= 2 && parts[1] == "switch") {
         if (parts.size() < 3) { tuiEcho("usage: ui switch <qt|web|qml>"); return; }

@@ -22,6 +22,7 @@
 #include <QHBoxLayout>
 #include <QVBoxLayout>
 #include <QListWidgetItem>
+#include <QListView>
 #include <QTableWidgetItem>
 #include <QCheckBox>
 #include <QHeaderView>
@@ -225,9 +226,24 @@ serial::serial(QWidget *parent) :
   // 初始化可视化源列表
   ui->vizSourceList->setSelectionMode(QAbstractItemView::MultiSelection);
 
+  // 顶部横向标签导航（对齐新原型：替代原左侧垂直导航）
+  ui->navList->setFlow(QListView::LeftToRight);
+  ui->navList->setWrapping(false);
+  ui->navList->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+  ui->navList->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+  ui->navList->setSpacing(4);
+  ui->navList->setContentsMargins(0, 0, 0, 0);
+
+  // 设置页左侧分类导航（软件/高级串口/插件）默认选中"软件设置"
+  ui->settingsNavList->setCurrentRow(0);
+  ui->settingsStack->setCurrentIndex(0);
+
   // 默认切换到基础页
   ui->navList->setCurrentRow(0);
   on_navList_currentRowChanged(0);
+
+  // 初始化设置页（主题/语言/串口内联控件）
+  initSettingsPage();
 }
 
 serial::~serial(){
@@ -245,6 +261,22 @@ void serial::setupConnections() {
   // 导航：左侧列表 -> 右侧堆叠页
   connect(ui->navList, &QListWidget::currentRowChanged,
           this, &serial::on_navList_currentRowChanged);
+
+  // 设置页左侧分类导航：切换右侧内容面板
+  connect(ui->settingsNavList, &QListWidget::currentRowChanged, this, [this](int row){
+      if (row < 0 || row >= ui->settingsStack->count()) return;
+      ui->settingsStack->setCurrentIndex(row);
+  });
+
+  // 设置页：主题/语言下拉框 + 内联串口参数应用/重置
+  connect(ui->themeCombo, &QComboBox::currentTextChanged,
+          this, &serial::on_themeCombo_currentTextChanged);
+  connect(ui->languageCombo, &QComboBox::currentTextChanged,
+          this, &serial::on_languageCombo_currentTextChanged);
+  connect(ui->applyInlineSettingsBtn, &QPushButton::clicked,
+          this, &serial::on_applyInlineSettingsBtn_clicked);
+  connect(ui->resetInlineSettingsBtn, &QPushButton::clicked,
+          this, &serial::on_resetInlineSettingsBtn_clicked);
 }
 
 void serial::setupMenus() {
@@ -355,11 +387,14 @@ void serial::on_navList_currentRowChanged(int row) {
   if (row < 0 || row >= ui->stackedWidget->count()) return;
   ui->stackedWidget->setCurrentIndex(row);
   const QStringList titles = {
-      tr("基础界面"), tr("终端交互"), tr("协议解析"), tr("可视化配置")};
+      tr("基础界面"), tr("终端交互"), tr("协议解析"), tr("可视化配置"), tr("设置")};
   if (row < titles.size()) ui->pageTitleLabel->setText(titles.at(row));
 
   // 切到可视化页时刷新数据源列表
   if (row == 3) refreshVizSources();
+
+  // 切到设置页时初始化（加载主题/语言/串口参数到控件）
+  if (row == 4) initSettingsPage();
 }
 
 // ============================================================
@@ -567,38 +602,8 @@ void serial::on_clearRecvButton_clicked() {
 }
 
 void serial::on_advancedSettingsBtn_clicked() {
-  QStringList availablePorts = worker_->scanPorts();
-  setting param(worker_->config(), availablePorts, this);
-
-  param.setWindowFlags(Qt::Dialog | Qt::CustomizeWindowHint | Qt::WindowTitleHint | Qt::WindowCloseButtonHint);
-  param.setModal(true);
-  param.setWindowModality(Qt::ApplicationModal);
-  param.adjustSize();
-
-  QRect parentGeometry = this->geometry();
-  QSize dlgSize = param.size();
-  int x = parentGeometry.center().x() - dlgSize.width() / 2;
-  int y = parentGeometry.center().y() - dlgSize.height() / 2;
-  x = qMax(x, parentGeometry.left());
-  y = qMax(y, parentGeometry.top());
-  param.move(x, y);
-
-  param.exec();
-
-  const sd::PortConfig& cfg = worker_->config();
-  if (!cfg.name.empty()) {
-    ui->portComboBox->setCurrentText(QString::fromStdString(cfg.name));
-  }
-
-  if (cfg.baudRate > 0) {
-    int index = ui->baudComboBox->findText(QString::number(cfg.baudRate));
-    if (index >= 0) {
-      ui->baudComboBox->setCurrentIndex(index);
-    } else {
-      ui->baudComboBox->addItem(QString::number(cfg.baudRate));
-      ui->baudComboBox->setCurrentText(QString::number(cfg.baudRate));
-    }
-  }
+  // 高级串口设置已内联到「设置」页：直接切换到第5项（索引4）
+  ui->navList->setCurrentRow(4);
 }
 
 void serial::on_portComboBox_activated(const QString &arg1) {
@@ -1100,4 +1105,95 @@ void serial::onFrameReceived(const sd::Frame &frame) {
           static_cast<VizPlotWidget*>(kid)->pushSample(frame);
     }
   }
+}
+
+// ============================================================
+// 设置页
+// ============================================================
+void serial::initSettingsPage() {
+  // 主题下拉框（文本 -> ThemeManager 主题名）
+  ui->themeCombo->clear();
+  ui->themeCombo->addItem(tr("跟随系统"), QStringLiteral("system"));
+  ui->themeCombo->addItem(tr("深色"),    QStringLiteral("dark"));
+  ui->themeCombo->addItem(tr("浅色"),    QStringLiteral("light"));
+  int themeIdx = ui->themeCombo->findData(ThemeManager::instance().currentTheme());
+  if (themeIdx >= 0) ui->themeCombo->setCurrentIndex(themeIdx);
+
+  // 语言下拉框（文本 -> LanguageManager 语言码）
+  ui->languageCombo->clear();
+  ui->languageCombo->addItem(tr("中文"),    QStringLiteral("zh_CN"));
+  ui->languageCombo->addItem(tr("English"), QStringLiteral("en"));
+  int langIdx = ui->languageCombo->findData(LanguageManager::instance().currentLanguage());
+  if (langIdx >= 0) ui->languageCombo->setCurrentIndex(langIdx);
+
+  // 定时发送间隔：初始取基础页定时输入框当前值
+  bool ok = false;
+  int interval = ui->timerIntervalEdit->text().toInt(&ok);
+  if (ok && interval > 0) ui->timerIntervalSpin->setValue(interval);
+
+  // 串口内联参数：从 worker_->config() 加载
+  const sd::PortConfig &cfg = worker_->config();
+
+  int di = ui->dataBitsCombo->findText(QString::number(cfg.dataBits));
+  if (di >= 0) ui->dataBitsCombo->setCurrentIndex(di);
+
+  int si = ui->stopBitsCombo->findText(QString::number(cfg.stopBits));
+  if (si >= 0) ui->stopBitsCombo->setCurrentIndex(si);
+
+  if (cfg.parity >= 0 && cfg.parity < ui->parityCombo->count())
+    ui->parityCombo->setCurrentIndex(cfg.parity);
+
+  if (cfg.flowControl >= 0 && cfg.flowControl < ui->flowCtrlCombo->count())
+    ui->flowCtrlCombo->setCurrentIndex(cfg.flowControl);
+}
+
+void serial::on_themeCombo_currentTextChanged(const QString &t) {
+  // 界面文本 -> ThemeManager 主题名：跟随系统→system, 深色→dark, 浅色→light
+  QString theme;
+  if (t == tr("跟随系统"))      theme = "system";
+  else if (t == tr("深色"))     theme = "dark";
+  else if (t == tr("浅色"))     theme = "light";
+  else theme = t;
+  ThemeManager::instance().applyTheme(theme);
+}
+
+void serial::on_languageCombo_currentTextChanged(const QString &l) {
+  // 界面文本 -> LanguageManager 语言码：中文→zh_CN, English→en
+  QString code;
+  if (l == tr("中文"))     code = "zh_CN";
+  else if (l == tr("English")) code = "en";
+  else code = l;
+  LanguageManager::instance().setLanguage(code);
+}
+
+void serial::on_applyInlineSettingsBtn_clicked() {
+  // 把内联控件值写回 worker_->config()
+  sd::PortConfig &cfg = worker_->config();
+  cfg.dataBits    = ui->dataBitsCombo->currentText().toInt();
+  cfg.stopBits    = ui->stopBitsCombo->currentText().toInt();
+  cfg.parity      = ui->parityCombo->currentIndex();      // 0=No,1=Even,2=Odd,3=Space,4=Mark
+  cfg.flowControl = ui->flowCtrlCombo->currentIndex();    // 0=No,1=Hardware,2=Software
+
+  appendReceiveData(tr("[System] Serial settings applied: %1 data bits, %2 stop bits, parity=%3, flow=%4")
+      .arg(cfg.dataBits)
+      .arg(cfg.stopBits)
+      .arg(ui->parityCombo->currentText())
+      .arg(ui->flowCtrlCombo->currentText()));
+}
+
+void serial::on_resetInlineSettingsBtn_clicked() {
+  // 恢复默认：8 数据位 / 1 停止位 / None 校验 / None 流控
+  sd::PortConfig &cfg = worker_->config();
+  cfg.dataBits    = 8;
+  cfg.stopBits    = 1;
+  cfg.parity      = 0;   // None
+  cfg.flowControl = 0;   // None
+
+  // 同步内联控件
+  ui->dataBitsCombo->setCurrentText(QString::number(cfg.dataBits));
+  ui->stopBitsCombo->setCurrentText(QString::number(cfg.stopBits));
+  ui->parityCombo->setCurrentIndex(cfg.parity);
+  ui->flowCtrlCombo->setCurrentIndex(cfg.flowControl);
+
+  appendReceiveData(tr("[System] Serial settings reset to defaults (8 1 None None)"));
 }
