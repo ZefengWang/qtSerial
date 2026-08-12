@@ -31,6 +31,7 @@ jobs:
             qmake_cmd: 'qmake'
             lrelease_cmd: 'lrelease'
             qt_base_pkgs: 'qtbase5-dev qttools5-dev-tools libqt5serialport5-dev qtchooser'
+            qt_qml_pkg: 'qtdeclarative5-dev'
             build_deb: 'true'
             build_appimage: 'true'
             build_tarball: 'false'
@@ -42,6 +43,7 @@ jobs:
             qmake_cmd: 'qmake6'
             lrelease_cmd: '/usr/lib/qt6/bin/lrelease'
             qt_base_pkgs: 'qt6-base-dev qt6-l10n-tools'
+            qt_qml_pkg: 'qt6-declarative-dev'
             build_deb: 'true'
             build_appimage: 'false'
             build_tarball: 'true'
@@ -53,6 +55,7 @@ jobs:
             qmake_cmd: 'qmake6'
             lrelease_cmd: '/usr/lib/qt6/bin/lrelease'
             qt_base_pkgs: 'qt6-base-dev qt6-l10n-tools'
+            qt_qml_pkg: 'qt6-declarative-dev'
             build_deb: 'true'
             build_appimage: 'false'
             build_tarball: 'true'
@@ -115,6 +118,9 @@ jobs:
           sudo apt-get install -y qt6-serialport-dev 2>/dev/null \
             || sudo apt-get install -y libqt6serialport6-dev 2>/dev/null \
             || sudo apt-get install -y libqt5serialport5-dev
+          # 安装 Qt Quick/QML 开发包，启用 HAVE_QML（QML UI 模式）。
+          # Ubuntu 22.04(Qt5) 用 qtdeclarative5-dev；24.04/26.04(Qt6) 用 qt6-declarative-dev。
+          sudo apt-get install -y ${{ matrix.qt_qml_pkg }}
           # 确认 qmake 与 lrelease 可用
           ${{ matrix.qmake_cmd }} -v
           ls /usr/lib/qt6/bin/ 2>/dev/null | grep -E 'lrelease|lupdate' || true
