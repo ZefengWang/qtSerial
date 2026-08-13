@@ -57,7 +57,8 @@ ColumnLayout {
 
                         RowLayout {
                             anchors.fill: parent
-                            anchors.margins: { left: 8, right: 8 }
+                            anchors.leftMargin: 8
+                            anchors.rightMargin: 8
                             spacing: 8
 
                             Text { text: model.name; color: "#c0caf5"; font.bold: true }
