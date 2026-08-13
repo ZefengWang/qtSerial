@@ -32,9 +32,9 @@ Column {
                 model: ["软件设置", "高级串口设置", "插件管理"]
                 CategoryButton {
                     text: modelData
-                    active: currentCategory === index
+                    active: root.currentCategory === index
                     onClicked: {
-                        currentCategory = index
+                        root.currentCategory = index
                         settingsStack.currentIndex = index
                     }
                 }
@@ -53,10 +53,10 @@ Column {
                 border.color: "#3a3f5a"
                 border.width: 1
                 radius: 8
-                padding: 16
 
                 Column {
-                    width: parent.width
+                    anchors.fill: parent
+                    anchors.margins: 16
                     spacing: 12
 
                     Label { text: "软件设置"; color: "#7aa2f7"; font.bold: true; font.pointSize: 14 }
@@ -125,10 +125,10 @@ Column {
                 border.color: "#3a3f5a"
                 border.width: 1
                 radius: 8
-                padding: 16
 
                 Column {
-                    width: parent.width
+                    anchors.fill: parent
+                    anchors.margins: 16
                     spacing: 12
 
                     Label { text: "高级串口设置"; color: "#7aa2f7"; font.bold: true; font.pointSize: 14 }
@@ -157,9 +157,10 @@ Column {
                         Layout.fillWidth: true
                         Layout.alignment: Qt.AlignRight
                         Button {
+                            id: applyBtn
                             text: "应用"
                             background: Rectangle { color: "#7aa2f7"; radius: 6 }
-                            contentItem: Text { text: parent.text; color: "#1a1b26"; font.bold: true; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+                            contentItem: Text { text: applyBtn.text; color: "#1a1b26"; font.bold: true; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
                             onClicked: {
                                 applyLabel.text = "已应用（数据位 " + dataBitsCombo.currentText +
                                                  " / 停止位 " + stopBitsCombo.currentText +
@@ -168,9 +169,10 @@ Column {
                             }
                         }
                         Button {
+                            id: resetBtn
                             text: "恢复默认"
                             background: Rectangle { color: "#12121a"; radius: 6; border.color: "#3a3f5a"; border.width: 1 }
-                            contentItem: Text { text: parent.text; color: "#c0caf5"; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+                            contentItem: Text { text: resetBtn.text; color: "#c0caf5"; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
                             onClicked: {
                                 dataBitsCombo.currentIndex = 3   // 8
                                 stopBitsCombo.currentIndex = 0   // 1
@@ -196,10 +198,10 @@ Column {
                 border.color: "#3a3f5a"
                 border.width: 1
                 radius: 8
-                padding: 16
 
                 Column {
-                    width: parent.width
+                    anchors.fill: parent
+                    anchors.margins: 16
                     spacing: 12
 
                     Label { text: "插件管理"; color: "#7aa2f7"; font.bold: true; font.pointSize: 14 }

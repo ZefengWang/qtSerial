@@ -4,6 +4,7 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
+import QtQml.Models 2.15
 
 ColumnLayout {
     id: root
@@ -21,6 +22,7 @@ ColumnLayout {
             id: portCombo
             implicitWidth: 180
             textRole: "text"
+            model: ListModel { id: portModel }
         }
         Label { text: "波特率:"; color: "#c0caf5" }
         TextField {
@@ -33,7 +35,7 @@ ColumnLayout {
         Button {
             id: refreshBtn
             text: "刷新"
-            onClicked: refreshPorts()
+            onClicked: root.refreshPorts()
             background: Rectangle {
                 color: refreshBtn.down ? "#3a3f5a" : "#2f3346"
                 radius: 6
@@ -41,15 +43,15 @@ ColumnLayout {
         }
         Button {
             id: openBtn
-            text: connected ? "关闭" : "打开"
-            onClicked: connected ? closePort() : openPort()
+            text: root.connected ? "关闭" : "打开"
+            onClicked: root.connected ? root.closePort() : root.openPort()
             background: Rectangle {
-                color: connected ? "#f7768e" : "#7aa2f7"
+                color: root.connected ? "#f7768e" : "#7aa2f7"
                 radius: 6
             }
         }
         Text {
-            text: statusText
+            text: root.statusText
             color: "#565f89"
             verticalAlignment: Text.AlignVCenter
             Layout.fillWidth: true
@@ -119,7 +121,7 @@ ColumnLayout {
                 border.width: 1
                 radius: 6
             }
-            onEditingFinished: if (connected && sendInput.text.length > 0) doSend()
+            onEditingFinished: if (root.connected && sendInput.text.length > 0) root.doSend()
         }
         CheckBox {
             id: hexCheck
@@ -129,7 +131,7 @@ ColumnLayout {
         Button {
             id: sendBtn
             text: "发送"
-            onClicked: doSend()
+            onClicked: root.doSend()
             background: Rectangle { color: "#9ece6a"; radius: 6 }
         }
     }
@@ -151,9 +153,9 @@ ColumnLayout {
     // --- Actions ---
     function refreshPorts() {
         var ports = serialWorker.scanPorts()
-        portCombo.clear()
+        portModel.clear()
         for (var i = 0; i < ports.length; i++) {
-            portCombo.addItem({text: ports[i]})
+            portModel.append({text: ports[i]})
         }
     }
 
