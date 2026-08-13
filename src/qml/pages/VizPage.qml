@@ -7,8 +7,9 @@ import QtQuick.Layouts 1.15
 
 ColumnLayout {
     id: root
-    anchors.fill: parent
-    anchors.margins: 16
+    Layout.fillWidth: true
+    Layout.fillHeight: true
+    Layout.margins: 16
     spacing: 12
 
     Label {

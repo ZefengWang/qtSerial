@@ -6,7 +6,8 @@ import QtQuick.Layouts 1.15
 
 Column {
     id: root
-    anchors.fill: parent
+    Layout.fillWidth: true
+    Layout.fillHeight: true
     spacing: 12
     padding: 16
 

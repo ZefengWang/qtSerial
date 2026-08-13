@@ -2,7 +2,8 @@
 // serial-debug-qml —— QML 主界面
 //
 // 按原型实现四页结构（基础 / 终端 / 协议解析 / 可视化），
-// 采用侧边栏导航，StackView 切换页面，和 Qt Widgets 方案对齐。
+// 采用顶部导航栏，StackLayout 切换页面，避免多个页面作为窗口直接子元素时重叠，
+// 和 Qt Widgets 方案对齐。
 //
 // 架构对齐：共享 SerialWorker（C++ 端），QML 仅做 UI 层，
 // 依赖 C++ 核心逻辑（复用协议/解析/字段池）。
@@ -54,6 +55,7 @@ ApplicationWindow {
                     font.pointSize: 12
                     Layout.alignment: Qt.AlignVCenter
                     Layout.fillWidth: true
+                    Layout.leftMargin: 8
                 }
             }
         }
@@ -103,12 +105,18 @@ ApplicationWindow {
             }
         }
 
-        // Page stack
-        StackView {
-            id: stack
+        // Page container (StackLayout: 页面只存在于此处，避免与窗口直接子元素重叠)
+        StackLayout {
+            id: pageStack
             Layout.fillWidth: true
             Layout.fillHeight: true
-            initialItem: basicPage
+            currentIndex: mainWindow.currentPage
+
+            BasicPage { }
+            TerminalPage { }
+            ProtocolPage { }
+            VizPage { }
+            SettingsPage { }
         }
     }
 
@@ -146,35 +154,8 @@ ApplicationWindow {
         signal clicked
     }
 
-    // Pages
-    BasicPage {
-        id: basicPage
-    }
-    TerminalPage {
-        id: terminalPage
-    }
-    ProtocolPage {
-        id: protocolPage
-    }
-    VizPage {
-        id: vizPage
-    }
-    SettingsPage {
-        id: settingsPage
-    }
-
     property int currentPage: 0
     property bool connected: serialWorker.isOpen
-
-    onCurrentPageChanged: {
-        switch (currentPage) {
-            case 0: stack.replace(basicPage); break
-            case 1: stack.replace(terminalPage); break
-            case 2: stack.replace(protocolPage); break
-            case 3: stack.replace(vizPage); break
-            case 4: stack.replace(settingsPage); break
-        }
-    }
 
     Connections {
         target: serialWorker
