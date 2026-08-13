@@ -32,7 +32,7 @@ Column {
                 model: ["软件设置", "高级串口设置", "插件管理"]
                 CategoryButton {
                     text: modelData
-                    active: root.currentCategory === index
+                    isActive: root.currentCategory === index
                     onClicked: {
                         root.currentCategory = index
                         settingsStack.currentIndex = index
@@ -228,20 +228,20 @@ Column {
     // 左侧分类按钮组件
     component CategoryButton: Rectangle {
         property alias text: catLabel.text
-        property bool active: false
+        property bool isActive: false
         signal clicked
         width: parent.width
         height: 36
         radius: 6
-        color: active ? "#1f2335" : "transparent"
-        border.color: active ? "#3a3f5a" : "transparent"
+        color: isActive ? "#1f2335" : "transparent"
+        border.color: isActive ? "#3a3f5a" : "transparent"
         border.width: 1
         Text {
             id: catLabel
             anchors.centerIn: parent
-            color: active ? "#7aa2f7" : "#c0caf5"
+            color: parent.isActive ? "#7aa2f7" : "#c0caf5"
             font.pointSize: 13
-            font.bold: active
+            font.bold: parent.isActive
         }
         MouseArea { anchors.fill: parent; onClicked: parent.clicked() }
     }

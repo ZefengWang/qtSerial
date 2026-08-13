@@ -28,8 +28,8 @@ ColumnLayout {
                 font.pointSize: 12
             }
             Text {
-                text: connected ? "● 已连接" : "○ 未连接"
-                color: connected ? "#9ece6a" : "#565f89"
+                text: root.connected ? "● 已连接" : "○ 未连接"
+                color: root.connected ? "#9ece6a" : "#565f89"
                 font.pointSize: 12
             }
             Item { Layout.fillWidth: true }
@@ -90,7 +90,7 @@ ColumnLayout {
                 placeholderText: "输入命令，回车发送..."
                 Layout.fillWidth: true
                 background: Rectangle { color: "transparent" }
-                onEditingFinished: doSend()
+                onEditingFinished: root.doSend()
             }
         }
     }
@@ -137,9 +137,9 @@ ColumnLayout {
     // Handle incoming
     Connections {
         target: serialWorker
-        onDataReceived: function(data) {
+        function onDataReceived(data) {
             // Terminal mode: raw data echo
-            appendOutput(data, "output")
+            root.appendOutput(data, "output")
         }
     }
 

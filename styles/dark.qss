@@ -186,7 +186,6 @@ QPushButton {
     color: #c0caf5;
     padding: 6px 16px;
     font-weight: 500;
-    transition: all 0.2s ease;
 }
 
 QPushButton:hover {
@@ -417,7 +416,6 @@ QCheckBox::indicator:checked {
 }
 
 QCheckBox::indicator:checked::after {
-    content: "✓";
     color: #1a1b26;
     font-size: 12px;
 }

@@ -49,8 +49,8 @@ ApplicationWindow {
                 }
 
                 Text {
-                    text: connected ? "● 已连接" : "○ 未连接"
-                    color: connected ? "#9ece6a" : "#565f89"
+                    text: mainWindow.connected ? "● 已连接" : "○ 未连接"
+                    color: mainWindow.connected ? "#9ece6a" : "#565f89"
                     font.pointSize: 12
                     Layout.alignment: Qt.AlignVCenter
                     Layout.fillWidth: true
@@ -73,32 +73,32 @@ ApplicationWindow {
                 NavButton {
                     text: "基础"
                     page: 0
-                    active: currentPage === 0
-                    onClicked: currentPage = 0
+                    isActive: mainWindow.currentPage === 0
+                    onClicked: mainWindow.currentPage = 0
                 }
                 NavButton {
                     text: "终端"
                     page: 1
-                    active: currentPage === 1
-                    onClicked: currentPage = 1
+                    isActive: mainWindow.currentPage === 1
+                    onClicked: mainWindow.currentPage = 1
                 }
                 NavButton {
                     text: "协议解析"
                     page: 2
-                    active: currentPage === 2
-                    onClicked: currentPage = 2
+                    isActive: mainWindow.currentPage === 2
+                    onClicked: mainWindow.currentPage = 2
                 }
                 NavButton {
                     text: "可视化"
                     page: 3
-                    active: currentPage === 3
-                    onClicked: currentPage = 3
+                    isActive: mainWindow.currentPage === 3
+                    onClicked: mainWindow.currentPage = 3
                 }
                 NavButton {
                     text: "设置"
                     page: 4
-                    active: currentPage === 4
-                    onClicked: currentPage = 4
+                    isActive: mainWindow.currentPage === 4
+                    onClicked: mainWindow.currentPage = 4
                 }
             }
         }
@@ -116,25 +116,25 @@ ApplicationWindow {
     component NavButton: Rectangle {
         property alias text: label.text
         property int page: 0
-        property bool active: false
+        property bool isActive: false
 
         implicitWidth: label.width + 36
         height: parent.height
-        color: active ? "#2a2e42" : "transparent"
+        color: isActive ? "#2a2e42" : "transparent"
 
         Rectangle {
             width: parent.width
             height: 2
             anchors.top: parent.top
-            color: active ? "#7aa2f7" : "transparent"
+            color: parent.isActive ? "#7aa2f7" : "transparent"
         }
 
         Text {
             id: label
-            color: active ? "#7aa2f7" : "#c0caf5"
+            color: parent.isActive ? "#7aa2f7" : "#c0caf5"
             anchors.centerIn: parent
             font.pointSize: 13
-            font.bold: active
+            font.bold: parent.isActive
         }
 
         MouseArea {
@@ -178,6 +178,6 @@ ApplicationWindow {
 
     Connections {
         target: serialWorker
-        onConnectionChanged: (open) => connected = open
+        function onConnectionChanged(open) { mainWindow.connected = open }
     }
 }

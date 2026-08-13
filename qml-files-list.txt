@@ -1,0 +1,12 @@
+# QML 文件清单
+# 生成时间：2026-08-13
+# 生成方式：Glob 扫描 /workspace/qtSerial 下所有 *.qml
+
+共 6 个 QML 文件：
+
+1. /workspace/qtSerial/src/qml/Main.qml
+2. /workspace/qtSerial/src/qml/pages/BasicPage.qml
+3. /workspace/qtSerial/src/qml/pages/TerminalPage.qml
+4. /workspace/qtSerial/src/qml/pages/ProtocolPage.qml
+5. /workspace/qtSerial/src/qml/pages/VizPage.qml
+6. /workspace/qtSerial/src/qml/pages/SettingsPage.qml

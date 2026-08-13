@@ -178,6 +178,15 @@ target_compile_definitions(serial-debug PRIVATE
     APP_VERSION="${PROJECT_VERSION}"
 )
 
+# serial-debug 主目标同样需要 HAVE_QML，否则 main.cpp 的 --ui=qml 分发会被
+# #ifdef 编译掉，导致 --ui=qml 静默回退到 QtWidgets 界面（QML 宿主不生效）。
+if(Qt6Quick_FOUND AND Qt6Qml_FOUND)
+    target_compile_definitions(serial-debug PRIVATE HAVE_QML)
+    # QML 资源必须编译进主可执行文件，否则 qrc:/qml/Main.qml 无法解析
+    # （仅放在 sd_launcher 静态库中会被链接器丢弃）。
+    target_sources(serial-debug PRIVATE src/qml/qml_resources.qrc)
+endif()
+
 # Install rules
 include(GNUInstallDirs)
 install(TARGETS serial-debug

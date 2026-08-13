@@ -1,0 +1,54 @@
+# QML 语法检查报告
+# 生成时间：2026-08-13
+# 检查工具：/usr/lib/qt6/bin/qmllint -I /usr/lib/x86_64-linux-gnu/qt6/qml
+# 说明：/usr/bin/qmllint 是指向 qtchooser 的坏链接（报 "could not find a Qt installation"），
+#       必须使用 Qt6 自带的 /usr/lib/qt6/bin/qmllint。
+
+## 结论摘要
+- 6 个 QML 文件均无 error 级问题。
+- 所有可安全消除的 warning 已全部消除（见"已消除的 warning"）。
+- 剩余 warning 均为 qmllint 对内联组件/跨文件 id/context property/delegate 上下文的静态分析误报，
+  强行"修复"（如加 root./mainWindow. 限定）会引入运行时错误或改变语义，故保留并逐一说明证据。
+
+## 已消除的 warning（本次修复）
+### Main.qml
+- connected（52/53 行）：改为 mainWindow.connected
+- currentPage（76-101 行）：改为 mainWindow.currentPage
+- connected=open（181 行）：改为 mainWindow.connected = open
+- NavButton 组件属性 active → isActive，内层引用改为 parent.isActive（消除 129/134/137 行）
+
+### SettingsPage.qml
+- CategoryButton 组件属性 active → isActive，内层引用改为 parent.isActive（消除 242/244 行）
+
+## 剩余 warning 分类（均为误报，无法安全消除）
+
+### 1. serialWorker（context property，跨文件注入，非根元素成员）
+- Main.qml:167, 180
+- BasicPage.qml:155, 171, 173, 178, 186, 190, 202
+- ProtocolPage.qml:213
+- TerminalPage.qml:133, 139
+- VizPage.qml:165
+证据：run_qml.cpp 中 `engine.rootContext()->setContextProperty("serialWorker", &worker)`。
+serialWorker 是运行期注入的 context property，不是任何 QML 元素的成员。
+加 root.serialWorker / mainWindow.serialWorker 会因属性不存在触发 TypeError。
+
+### 2. mainWindow.connected（跨文件 id 引用）
+- BasicPage.qml:140
+- TerminalPage.qml:99
+证据：mainWindow 是 Main.qml 的 id，qmllint 无法跨文件解析。引用本身已是限定形式。
+
+### 3. model.xxx / index / modelData（ListView/Repeater delegate 上下文属性）
+- ProtocolPage.qml:66, 74, 76, 81, 90, 96
+- VizPage.qml:55, 64, 66, 71, 126, 127, 134, 148, 149
+- SettingsPage.qml:34, 35, 37, 38
+证据：均在 delegate 内，model/index/modelData 是 delegate 上下文提供的隐式属性，
+root.model 不存在，无法用 root. 限定。
+
+### 4. root / settingsStack（同文件 id，已是最限定形式）
+- SettingsPage.qml:35, 37, 38
+证据：root 是 SettingsPage 根元素 id，settingsStack 是同文件 StackLayout id，
+引用本身已是限定形式，qmllint 无法识别同文件 id 的组件作用域。
+
+## 检查方式
+- 使用 /usr/lib/qt6/bin/qmllint（Qt6 自带），避免 /usr/bin/qmllint（qtchooser 坏链接）。
+- 对每个文件执行：/usr/lib/qt6/bin/qmllint -I /usr/lib/x86_64-linux-gnu/qt6/qml <file>

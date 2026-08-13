@@ -110,8 +110,8 @@ private:
     sd::SteadyClock* clock_ = nullptr;
     sd::SerialSource* source_ = nullptr;
     sd::IBufferStrategy* buffer_ = nullptr;
-    sd::Session*      session_ = nullptr;
     sd::EventBus*     bus_ = nullptr;
+    sd::Session*      session_ = nullptr;
     sd::ProtocolEngine* protoEngine_ = nullptr;
     sd::FieldPool*    fieldPool_ = nullptr;
     QTimer            pollTimer_;

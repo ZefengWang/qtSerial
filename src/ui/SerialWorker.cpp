@@ -26,11 +26,11 @@ SerialWorker::SerialWorker(QObject* parent)
       clock_(new sd::SteadyClock),
       source_(new sd::SerialSource),
       buffer_(new sd::RingBuffer(1 << 20)),          // 1MB 环形缓冲，内存恒定
-      config_(new sd::PortConfig),
       bus_(new sd::EventBus),
       session_(new sd::Session(source_, buffer_, clock_, *bus_)),
       protoEngine_(new sd::ProtocolEngine(*bus_, sd::ProtocolRegistry{})),
-      fieldPool_(new sd::FieldPool) {
+      fieldPool_(new sd::FieldPool),
+      config_(new sd::PortConfig) {
     // 订阅接收主题：数据经 EventBus 投递，这里转发为 Qt 信号。
     // 该回调在 Session::poll() 内同步执行（UI 线程），无跨线程问题。
     bus_->subscribe("rx", [this](const std::vector<std::uint8_t>& data) {

@@ -374,7 +374,6 @@ QCheckBox::indicator:checked {
 }
 
 QCheckBox::indicator:checked::after {
-    content: "✓";
     color: #ffffff;
     font-size: 12px;
 }

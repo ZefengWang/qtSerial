@@ -200,7 +200,7 @@ ColumnLayout {
     // Handle incoming data from C++
     Connections {
         target: serialWorker
-        onDataReceived: function(data) {
+        function onDataReceived(data) {
             var ts = new Date()
             var tsStr = "[" + ts.getHours().toString().padStart(2, '0') + ":" +
                         ts.getMinutes().toString().padStart(2, '0') + ":" +

@@ -48,7 +48,7 @@ ColumnLayout {
                     id: sourceList
                     anchors.fill: parent
                     anchors.margins: 8
-                    model: sources
+                    model: root.sources
                     delegate: Rectangle {
                         width: parent.width
                         height: 30
@@ -68,7 +68,7 @@ ColumnLayout {
 
                         MouseArea {
                             anchors.fill: parent
-                            onClicked: toggleSource(index)
+                            onClicked: root.toggleSource(index)
                         }
                     }
                 }
@@ -87,7 +87,7 @@ ColumnLayout {
             Button {
                 text: "+ 新建视图"
                 Layout.fillWidth: true
-                onClicked: addView()
+                onClicked: root.addView()
                 background: Rectangle { color: "#7aa2f7"; radius: 6 }
             }
         }
@@ -106,7 +106,7 @@ ColumnLayout {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 spacing: 8
-                model: views
+                model: root.views
                 delegate: Rectangle {
                     width: parent.width
                     height: 140
@@ -131,7 +131,7 @@ ColumnLayout {
                                 color: "#f7768e"
                                 MouseArea {
                                     anchors.fill: parent
-                                    onClicked: removeView(index)
+                                    onClicked: root.removeView(index)
                                 }
                             }
                         }

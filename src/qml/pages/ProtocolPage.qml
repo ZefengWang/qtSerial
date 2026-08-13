@@ -36,12 +36,12 @@ ColumnLayout {
                 Label { text: "字段列表"; color: "#c0caf5"; font.bold: true }
                 Button {
                     text: "+ 添加字段"
-                    onClicked: addField()
+                    onClicked: root.addField()
                     background: Rectangle { color: "#7aa2f7"; radius: 6 }
                 }
                 Button {
                     text: "- 删除选中"
-                    onClicked: removeField()
+                    onClicked: root.removeField()
                     background: Rectangle { color: "#f7768e"; radius: 6 }
                 }
                 Item { Layout.fillWidth: true }
@@ -59,7 +59,7 @@ ColumnLayout {
                     id: fieldList
                     anchors.fill: parent
                     anchors.margins: 8
-                    model: fields
+                    model: root.fields
                     delegate: Rectangle {
                         width: parent.width
                         height: 32
@@ -87,13 +87,13 @@ ColumnLayout {
                                 color: "#f7768e"
                                 MouseArea {
                                     anchors.fill: parent
-                                    onClicked: removeField(index)
+                                    onClicked: root.removeField(index)
                                 }
                             }
                         }
                         MouseArea {
                             anchors.fill: parent
-                            onClicked: selectField(index)
+                            onClicked: root.selectField(index)
                         }
                     }
                 }
@@ -108,7 +108,7 @@ ColumnLayout {
             spacing: 8
 
             Label {
-                text: "字段编辑" + (selectedIndex >= 0 ? " · 选中: " + fields[selectedIndex].name : "")
+                text: "字段编辑" + (root.selectedIndex >= 0 ? " · 选中: " + root.fields[root.selectedIndex].name : "")
                 color: "#c0caf5"
                 font.bold: true
             }
@@ -122,7 +122,7 @@ ColumnLayout {
                 Label { text: "名称"; color: "#c0caf5" }
                 TextField {
                     id: nameInput
-                    text: selectedIndex >= 0 ? fields[selectedIndex].name : ""
+                    text: root.selectedIndex >= 0 ? root.fields[root.selectedIndex].name : ""
                     Layout.fillWidth: true
                 }
 
@@ -136,7 +136,7 @@ ColumnLayout {
                 Label { text: "长度(字节)"; color: "#c0caf5" }
                 TextField {
                     id: lengthInput
-                    text: selectedIndex >= 0 ? fields[selectedIndex].length : "4"
+                    text: root.selectedIndex >= 0 ? root.fields[root.selectedIndex].length : "4"
                     Layout.fillWidth: true
                     validator: IntValidator { bottom: 1; top: 128 }
                 }
@@ -152,14 +152,14 @@ ColumnLayout {
             Button {
                 text: "应用字段"
                 Layout.fillWidth: true
-                onClicked: applyField()
+                onClicked: root.applyField()
                 background: Rectangle { color: "#9ece6a"; radius: 6 }
             }
 
             Button {
                 text: "应用协议并产出字段池"
                 Layout.fillWidth: true
-                onClicked: applySchema()
+                onClicked: root.applySchema()
                 background: Rectangle { color: "#7aa2f7"; radius: 6 }
             }
 

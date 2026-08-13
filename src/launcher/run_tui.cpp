@@ -235,7 +235,6 @@ void handleTuiLine(const QString &raw) {
         } else if (sub == "list") {
             if (g_editFields.empty()) { tuiEcho("No fields defined."); return; }
             tuiEcho(QString("%1 | %2 | %3 | %4").arg("name", -12).arg("type", -8).arg("len", -4).arg("note"));
-            int i = 0;
             for (const auto& f : g_editFields) {
                 tuiEcho(QString("%1 | %2 | %3 | %4")
                             .arg(QString::fromStdString(f.name), -12)

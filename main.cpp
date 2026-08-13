@@ -31,31 +31,6 @@ int pickUiMode(UiMode* picked, bool* remember) {
     return 0;
 }
 
-void printUiHelp() {
-    qInfo().noquote() <<
-        "\nSerial Debug Assistant v" APP_VERSION "\n"
-        "----------------------------------------\n"
-        "单一可执行文件，多 UI 宿主，启动时自动选择：\n"
-        "  无图形环境 -> 自动进入终端(TUI)\n"
-        "  有图形环境 -> 弹出界面模式选择框（可记住选择）\n"
-        "\n"
-        "命令行覆盖：\n"
-        "  serial-debug --ui=qt     Qt Widgets 桌面界面\n"
-        "  serial-debug --ui=tui    无头终端界面（纯文本）\n"
-        "  serial-debug --ui=web    浏览器界面（默认端口 8080）\n"
-        "  serial-debug --ui=web --port 9090   指定 Web 端口\n"
-        "  serial-debug --ui=web --no-browser  启动 Web 但不自动打开浏览器\n"
-#ifdef HAVE_QML
-        "  serial-debug --ui=qml    QML 界面（需 Qt Quick 支持，可选 GPU）\n"
-#else
-        "  serial-debug --ui=qml    (QML 未编译进本二进制)\n"
-#endif
-        "  serial-debug --ui=auto   自动选择（默认）\n"
-        "\nWeb 模式行为：启动后自动打开系统默认浏览器，进程后台运行服务；\n"
-        "  默认端口 8080 被占用时自动切换到空闲端口。\n"
-        "----------------------------------------\n";
-}
-
 } // namespace
 
 int main(int argc, char *argv[])
